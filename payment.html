@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR PG - Pay Rent</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 1.5rem;
+            border-radius: 5px;
+            margin-bottom: 2rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .payment-card {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .payment-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .payment-card h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .payment-card p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            margin-top: 1rem;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .success-message {
+            display: none;
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .error-message {
+            display: none;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💳 Pay Your Rent</h1>
+            <p>AR PG - Monthly Payment</p>
+        </div>
+
+        <div class="content">
+            <div class="success-message" id="successMessage">
+                ✅ Payment successful! Your payment has been recorded.
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+
+            <!-- Payment Information -->
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Monthly Rent:</span>
+                    <span class="info-value">₹8,000</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Due Date:</span>
+                    <span class="info-value" id="dueDate">15th of every month</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span class="info-value" id="paymentStatus">Pending</span>
+                </div>
+            </div>
+
+            <!-- Payment Method Selection -->
+            <div class="payment-card">
+                <h3>💳 Online Payment</h3>
+                <p>Pay securely using your credit/debit card, UPI, or netbanking</p>
+
+                <div class="form-group">
+                    <label for="amount">Amount to Pay (₹)</label>
+                    <input type="number" id="amount" value="8000" min="1000" required>
+                </div>
+
+                <button class="btn" onclick="initiatePayment()">Pay Now with Razorpay</button>
+            </div>
+
+            <!-- Manual Payment -->
+            <div class="payment-card">
+                <h3>🏦 Manual Payment</h3>
+                <p>Transfer money to our bank account and notify us</p>
+                
+                <div style="background: #f9f9f9; padding: 1rem; border-radius: 5px; margin-bottom: 1rem;">
+                    <p><strong>Bank Name:</strong> XYZ Bank</p>
+                    <p><strong>Account No:</strong> 1234567890</p>
+                    <p><strong>IFSC Code:</strong> XYZB0001234</p>
+                    <p><strong>Account Holder:</strong> AR PG</p>
+                </div>
+
+                <button class="btn btn-secondary" onclick="notifyManualPayment()">Mark as Paid (Manual)</button>
+            </div>
+
+            <div class="loading" id="loading">Processing payment...</div>
+
+            <div class="back-link">
+                <a href="dashboard.html">← Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:5000/api';
+
+        // Get student phone from localStorage
+        const studentPhone = localStorage.getItem('currentStudentPhone');
+
+        if (!studentPhone) {
+            alert('Please login first!');
+            window.location.href = 'auth.html';
+        }
+
+        // Razorpay Key ID (Replace with your actual key)
+        const RAZORPAY_KEY = 'rzp_test_YOUR_KEY_ID';
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        async function initiatePayment() {
+            const amount = parseInt(document.getElementById('amount').value);
+
+            if (amount < 1000) {
+                showError('Minimum payment is ₹1,000');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                // Create payment order
+                const response = await fetch(BACKEND_URL + '/create-payment-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: studentPhone,
+                        amount: amount
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError('Error creating payment order: ' + data.message);
+                    showLoading(false);
+                    return;
+                }
+
+                // For demo purposes, we'll mark payment as paid directly
+                // In production, Razorpay would return here after payment
+                await verifyAndMarkPayment(amount);
+
+            } catch (error) {
+                showError('Error: ' + error.message);
+                console.error('Payment error:', error);
+                showLoading(false);
+            }
+        }
+
+        async function verifyAndMarkPayment(amount) {
+            try {
+                const response = await fetch(BACKEND_URL + '/verify-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: studentPhone,
+                        amount: amount
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showLoading(false);
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('paymentStatus').textContent = 'Paid ✅';
+                    document.getElementById('amount').disabled = true;
+
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 3000);
+                } else {
+                    showError('Payment verification failed: ' + data.message);
+                    showLoading(false);
+                }
+            } catch (error) {
+                showError('Error verifying payment: ' + error.message);
+                showLoading(false);
+            }
+        }
+
+        async function notifyManualPayment() {
+            if (confirm('Have you transferred the money? This will mark your payment as pending for admin verification.')) {
+                try {
+                    // Send message to admin
+                    const response = await fetch(BACKEND_URL + '/admin/send-reminder', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            phones: [studentPhone],
+                            message: `Student ${studentPhone} has made a manual bank transfer for ₹8,000. Please verify and confirm payment.`,
+                            messageType: 'payment-notification'
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('✅ Payment notification sent to admin. They will verify and confirm your payment shortly.');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+
+        // Set today's date as reference
+        function setDueDate() {
+            const today = new Date();
+            const dueDay = 15;
+            let nextDue = new Date(today.getFullYear(), today.getMonth(), dueDay);
+            
+            if (today.getDate() > dueDay) {
+                nextDue = new Date(today.getFullYear(), today.getMonth() + 1, dueDay);
+            }
+
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('dueDate').textContent = nextDue.toLocaleDateString('en-IN', options);
+        }
+
+        window.addEventListener('DOMContentLoaded', setDueDate);
+    </script>
+</body>
+</html>

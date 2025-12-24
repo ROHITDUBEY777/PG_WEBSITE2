@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR PG Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .chatbot-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            font-family: inherit;
+        }
+
+        .chatbot-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .chatbot-button.active {
+            display: none;
+        }
+
+        .chatbot-container {
+            display: none;
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            width: 380px;
+            height: 600px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 5px 40px rgba(0, 0, 0, 0.16);
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+
+        .chatbot-container.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chatbot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chatbot-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .close-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 8px;
+            animation: messageAppear 0.3s ease;
+        }
+
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message.bot .message-content {
+            background: #f0f0f0;
+            color: #333;
+            border-radius: 12px 12px 12px 0;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 12px;
+        }
+
+        .chatbot-input {
+            padding: 16px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chatbot-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .chatbot-input input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 0 16px 16px;
+        }
+
+        .suggestion-btn {
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+            color: #333;
+        }
+
+        .suggestion-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 12px 16px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                opacity: 0.3;
+            }
+            30% {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chatbot-container {
+                width: calc(100vw - 40px);
+                height: 500px;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="chatbot-widget">
+        <button class="chatbot-button" onclick="toggleChat()">💬</button>
+        
+        <div class="chatbot-container">
+            <div class="chatbot-header">
+                <h3>AR PG Support</h3>
+                <button class="close-btn" onclick="toggleChat()">✕</button>
+            </div>
+
+            <div class="chatbot-messages" id="messagesContainer">
+                <div class="message bot">
+                    <div class="message-content">
+                        Hi! I'm AR PG Assistant. How can I help you today?
+                    </div>
+                </div>
+            </div>
+
+            <div class="suggestions" id="suggestionsContainer">
+                <button class="suggestion-btn" onclick="sendMessage('How to pay rent?')">💳 Pay Rent</button>
+                <button class="suggestion-btn" onclick="sendMessage('What are the facilities?')">🏠 Facilities</button>
+                <button class="suggestion-btn" onclick="sendMessage('Forgot password')">🔐 Password Help</button>
+                <button class="suggestion-btn" onclick="sendMessage('Contact support')">📞 Contact</button>
+            </div>
+
+            <div class="chatbot-input">
+                <input type="text" id="userInput" placeholder="Type your message..." onkeypress="handleEnter(event)">
+                <button class="send-btn" onclick="sendUserMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const faqData = {
+            "how to pay rent": {
+                response: "To pay rent:\n1. Login to your dashboard\n2. Click 'Pay Rent Now'\n3. Enter amount\n4. Choose payment method\n5. Complete payment\n\nYou'll get confirmation via email!",
+                keywords: ["pay", "rent", "payment", "bill"]
+            },
+            "what are the facilities": {
+                response: "Our facilities include:\n✓ WiFi & High-speed internet\n✓ AC Rooms\n✓ Mess facility\n✓ 24/7 Security\n✓ Study room\n✓ Laundry service\n✓ Gaming lounge",
+                keywords: ["facility", "facilities", "amenities", "what do you have"]
+            },
+            "forgot password": {
+                response: "To reset your password:\n1. Go to Login page\n2. Click 'Forgot Password?'\n3. Enter your phone number\n4. Check email for reset code\n5. Enter code and set new password\n\nNeed more help? Contact support.",
+                keywords: ["forgot", "password", "reset", "can't login", "login issue"]
+            },
+            "contact support": {
+                response: "You can reach us:\n📞 Phone: +91 98765 43210\n📧 Email: support@arpg.com\n💬 Chat: Available 24/7\n\nWe'll respond within 2 hours!",
+                keywords: ["contact", "support", "help", "call", "email", "reach"]
+            },
+            "room types": {
+                response: "We offer 3 room types:\n\n🛏️ Single Room - ₹8,000/month\n• Private room with bathroom\n\n🛏️🛏️ 2-Bed Shared - ₹5,000/month\n• Shared room for 2\n\n🛏️🛏️🛏️ 3-Bed Shared - ₹3,500/month\n• Shared room for 3",
+                keywords: ["room", "rooms", "single", "shared", "price", "cost"]
+            },
+            "how to book": {
+                response: "To book a room:\n1. Go to homepage\n2. Click 'Book Your Room Now'\n3. Sign up with your details\n4. Complete payment\n5. Get confirmation\n\nYour room will be ready!",
+                keywords: ["book", "booking", "reserve", "how to join", "sign up"]
+            },
+            "default": {
+                response: "I'm here to help! You can ask me about:\n• Payment & Rent\n• Room types & booking\n• Facilities\n• Password reset\n• Contact support\n\nWhat would you like to know?",
+                keywords: []
+            }
+        };
+
+        function toggleChat() {
+            const container = document.querySelector('.chatbot-container');
+            const button = document.querySelector('.chatbot-button');
+            container.classList.toggle('active');
+        }
+
+        function sendUserMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                sendMessage(message);
+                input.value = '';
+            }
+        }
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                sendUserMessage();
+            }
+        }
+
+        function sendMessage(message) {
+            // Display user message
+            displayMessage(message, 'user');
+            
+            // Hide suggestions
+            document.getElementById('suggestionsContainer').style.display = 'none';
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            // Get bot response
+            setTimeout(() => {
+                const response = getBotResponse(message);
+                removeTypingIndicator();
+                displayMessage(response, 'bot');
+            }, 800);
+        }
+
+        function displayMessage(text, sender) {
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = text;
+            
+            messageDiv.appendChild(contentDiv);
+            container.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const container = document.getElementById('messagesContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'typing-dot';
+                typingDiv.appendChild(dot);
+            }
+            
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const typing = document.getElementById('typingIndicator');
+            if (typing) typing.remove();
+        }
+
+        function getBotResponse(userMessage) {
+            const lowerMessage = userMessage.toLowerCase();
+            
+            // Check each FAQ
+            for (const [key, value] of Object.entries(faqData)) {
+                if (key === 'default') continue;
+                
+                // Check if keywords match
+                if (value.keywords.some(keyword => lowerMessage.includes(keyword))) {
+                    return value.response;
+                }
+                
+                // Check if key words appear in message
+                if (lowerMessage.includes(key)) {
+                    return value.response;
+                }
+            }
+            
+            // Default response
+            return faqData.default.response;
+        }
+    </script>
+</body>
+</html>

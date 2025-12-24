@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AR PG | Login & Signup</title>
+
+  <style>
+    * {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .container {
+      background: linear-gradient(180deg, hsl(220, 100%, 99%), #eaf3ff);
+      width: 100%;
+      max-width: 420px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      overflow: hidden;
+      text-align: center;
+    }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #801fe0 100%);
+      text-align: center;
+      color: white;
+      padding: 2rem 1rem 2.5rem;
+      position: relative;
+      margin-bottom: 1rem;
+    }
+
+    .logo-img {
+      height: 80px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.15);
+      padding: 8px;
+      margin-bottom: 0.8rem;
+    }
+
+    .curve-divider {
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120"><path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="white"/></svg>') no-repeat center/cover;
+    }
+
+    h2 { color: #2d3748; }
+    p { color: #555; }
+
+    .role-switch {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 1.2rem;
+    }
+
+    .role-btn {
+      border: none;
+      padding: 8px 16px;
+      border-radius: 30px;
+      background-color: #edf2ff;
+      cursor: pointer;
+      transition: 0.3s;
+      font-weight: 600;
+    }
+
+    .role-btn.active {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      padding: 0 2rem 2rem;
+    }
+
+    .input-group {
+      margin-bottom: 1rem;
+    }
+
+    .icon-label {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .input-group input, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1.8px solid #dbe2f0;
+      font-size: 0.95rem;
+      outline: none;
+      background: white;
+      transition: 0.3s ease;
+    }
+
+    .input-group input:focus, select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+    }
+
+    .forgot-link {
+      text-align: right;
+      margin-bottom: 1rem;
+    }
+
+    .forgot-link a {
+      color: #667eea;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .switch-link {
+      margin-top: 1rem;
+      color: #667eea;
+      text-align: center;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .hidden { display: none; }
+
+    footer {
+      margin-top: 1rem;
+      color: white;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+      <img src="image.png" class="logo-img">
+      <h2>AR PG</h2>
+      <p>FEEL LIKE HOME</p>
+      <div class="curve-divider"></div>
+    </div>
+
+    <p>Welcome! Please sign in or create your account.</p>
+
+    <div class="role-switch">
+      <button id="studentBtn" class="role-btn active" onclick="switchRole('student')">🎓 Student</button>
+      <button id="adminBtn" class="role-btn" onclick="switchRole('admin')">🧑‍💼 Admin</button>
+    </div>
+
+    <!-- STUDENT LOGIN -->
+    <!-- STUDENT LOGIN -->
+<form id="studentLoginForm">
+  <div class="input-group">
+    <label class="icon-label">📧 Email or 📱 Phone</label>
+    <input type="text" id="studentEmail" placeholder="Enter email or phone">
+  </div>
+
+  <div class="input-group">
+    <label class="icon-label">🔑 Password</label>
+    <input type="password" id="studentPassword" placeholder="Enter password">
+  </div>
+
+  <div class="forgot-link">
+    <a href="forgot-password.html">Forgot Password?</a>
+  </div>
+
+  <button type="button" onclick="studentLogin()">Login</button>
+
+  <a class="switch-link" onclick="showSignup()">New User? Create Account →</a>
+</form>
+
+    <!-- STUDENT SIGNUP -->
+    <form id="studentSignupForm" class="hidden">
+
+      <div class="input-group">
+        <label class="icon-label">👤 Full Name</label>
+        <input type="text" id="fullName" placeholder="Your full name">
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">📧 Email Address</label>
+        <input type="email" id="email" placeholder="your.email@example.com">
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">📱 Mobile Number</label>
+        <input type="tel" id="phone" maxlength="10" placeholder="10-digit mobile number">
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">🎓 College / University</label>
+        <input type="text" id="college" placeholder="Your college name">
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">📚 Course / Branch</label>
+        <input type="text" id="course" placeholder="E.g., CSE, Mechanical">
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">📅 Year</label>
+        <select id="year">
+          <option value="">Select year</option>
+          <option value="1st">1st Year</option>
+          <option value="2nd">2nd Year</option>
+          <option value="3rd">3rd Year</option>
+          <option value="4th">4th Year</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">🏠 Preferred Room Type</label>
+        <select id="roomType">
+          <option value="">Select room type</option>
+          <option value="Single">Single (₹8,000)</option>
+          <option value="2-Bed">Double (₹5,000)</option>
+          <option value="3-Bed">Triple (₹3,500)</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">🔒 Create Password</label>
+        <input type="password" id="password" placeholder="Create password">
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">🔒 Confirm Password</label>
+        <input type="password" id="confirmPassword" placeholder="Re-enter password">
+      </div>
+
+      <button type="button" onclick="studentSignup()">Create My Account</button>
+
+      <a class="switch-link" onclick="showLogin()">Already have an account? Login →</a>
+    </form>
+
+    <!-- ADMIN LOGIN -->
+    <form id="adminLoginForm" class="hidden">
+
+      <div class="input-group">
+        <label class="icon-label">📧 Admin Email</label>
+        <input type="email" id="adminEmail" value="admin@arpg.com">
+      </div>
+
+      <div class="input-group">
+        <label class="icon-label">🔑 Password</label>
+        <input type="password" id="adminPassword" value="admin123">
+      </div>
+
+      <div class="forgot-link">
+        <a href="admin-forgot-password.html">Forgot Password?</a>
+      </div>
+
+      <button type="button" onclick="adminLogin()">Login as Admin</button>
+
+      <a class="switch-link" onclick="switchRole('student')">Back to Student Login</a>
+    </form>
+
+  </div>
+
+  <footer>© 2025 AR PG | All Rights Reserved</footer>
+
+  <script>
+  const BACKEND_URL = "http://localhost:5000/api";
+
+  /* ---------------------------- SWITCH ROLE ---------------------------- */
+  function switchRole(role) {
+    document.getElementById('studentBtn').classList.toggle('active', role === 'student');
+    document.getElementById('adminBtn').classList.toggle('active', role === 'admin');
+
+    document.getElementById('studentLoginForm').classList.toggle('hidden', role === 'admin');
+    document.getElementById('studentSignupForm').classList.add('hidden');
+    document.getElementById('adminLoginForm').classList.toggle('hidden', role !== 'admin');
+  }
+
+  /* ---------------------------- SIGNUP FORM ---------------------------- */
+  async function studentSignup() {
+    const fullName = document.getElementById('fullName').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const college = document.getElementById('college').value.trim();
+    const course = document.getElementById('course').value.trim();
+    const year = document.getElementById('year').value.trim();
+    const roomType = document.getElementById('roomType').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+    if (password !== confirmPassword) {
+      alert("❌ Passwords do not match!");
+      return;
+    }
+
+    const payload = {
+      fullName,
+      email,
+      phone,
+      college,
+      course,
+      year,
+      roomType,
+      password
+    };
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert("✅ Signup successful!");
+        showLogin();
+      } else {
+        alert("❌ " + data.message);
+      }
+
+    } catch (err) {
+      alert("❌ Error connecting to server");
+      console.error(err);
+    }
+  }
+
+  /* ---------------------------- STUDENT LOGIN ---------------------------- */
+ async function studentLogin() {
+  const phone = document.getElementById('studentEmail').value.trim();
+  const password = document.getElementById('studentPassword').value.trim();
+
+  if (!phone || !password) {
+    alert("Please enter phone and password.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: phone,
+        password: password
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert("✅ Login successful!");
+      window.location.href = "student-dashboard.html";
+    } else {
+      alert("❌ " + data.message);
+    }
+
+  } catch (err) {
+    alert("❌ Error connecting to backend");
+    console.error(err);
+  }
+}
+
+
+  /* ---------------------------- ADMIN LOGIN ---------------------------- */
+  function adminLogin() {
+    const email = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPassword').value.trim();
+
+    if (email === "admin@arpg.com" && password === "admin123") {
+      alert("✅ Admin logged in!");
+      window.location.href = "admin.html";
+    } else {
+      alert("❌ Invalid admin credentials!");
+    }
+  }
+
+  /* ---------------------------- SHOW FORMS ---------------------------- */
+  function showSignup() {
+    document.getElementById('studentLoginForm').classList.add('hidden');
+    document.getElementById('studentSignupForm').classList.remove('hidden');
+  }
+
+  function showLogin() {
+    document.getElementById('studentSignupForm').classList.add('hidden');
+    document.getElementById('studentLoginForm').classList.remove('hidden');
+  }
+
+  /* ---------------------------- PASSWORD TOGGLE ---------------------------- */
+  function togglePassword(id) {
+    const field = document.getElementById(id);
+    field.type = field.type === "password" ? "text" : "password";
+  }
+
+  /* Auto-open admin tab if URL contains #admin */
+  window.addEventListener("DOMContentLoaded", () => {
+    if (window.location.hash === "#admin") {
+      switchRole("admin");
+    }
+  });
+</script>
+
+</body>
+</html>
+

@@ -1,0 +1,1462 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR PG - Admin Dashboard</title>
+    <style>
+        :root {
+            /* Modern Color Palette */
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary-color: #ec4899;
+            --accent-color: #14b8a6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            
+            /* Neutral Colors */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --border-color: #e2e8f0;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-base: 0.3s ease;
+            --transition-slow: 0.5s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            animation: slideInLeft 0.5s ease;
+        }
+
+        .navbar .logo img {
+            height: 40px;
+            border-radius: var(--radius-sm);
+            transition: transform var(--transition-base);
+        }
+
+        .navbar .logo img:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: slideInRight 0.5s ease;
+        }
+
+        .user-info span {
+            font-weight: 500;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(10px);
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 24px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all var(--transition-base);
+            backdrop-filter: blur(10px);
+        }
+
+        .logout-btn:hover {
+            background: white;
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Main Container */
+        .container {
+            display: flex;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            padding: 2rem 0;
+            box-shadow: var(--shadow-md);
+            overflow-y: auto;
+            transition: all var(--transition-base);
+            animation: slideInLeft 0.6s ease;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin: 0.5rem 0;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-left: 4px solid transparent;
+            transition: all var(--transition-base);
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+            transition: width var(--transition-base);
+        }
+
+        .sidebar a:hover::before {
+            width: 100%;
+        }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%);
+            border-left-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .sidebar a.active {
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2.5rem;
+            overflow-y: auto;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+            font-weight: 700;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: slideDown 0.5s ease;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            transition: all var(--transition-base);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            animation: scaleIn 0.5s ease;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary-light);
+        }
+
+        .stat-card:nth-child(1)::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #14b8a6); }
+        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #f59e0b, #f97316); }
+        .stat-card:nth-child(4)::before { background: linear-gradient(90deg, #ec4899, #ef4444); }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 1rem 0;
+            letter-spacing: -2px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+            transition: all var(--transition-base);
+            animation: fadeInUp 0.6s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 1.2rem;
+            text-align: left;
+            font-weight: 700;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+
+        th:first-child {
+            border-top-left-radius: var(--radius-md);
+        }
+
+        th:last-child {
+            border-top-right-radius: var(--radius-md);
+        }
+
+        td {
+            padding: 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            transition: all var(--transition-fast);
+        }
+
+        tr {
+            transition: all var(--transition-base);
+        }
+
+        tr:hover {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, transparent 100%);
+            transform: scale(1.01);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all var(--transition-base);
+        }
+
+        .badge-paid {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+
+        .badge-pending {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .badge-overdue {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        /* Buttons */
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            font-size: 0.95rem;
+            font-weight: 600;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.6rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.9rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all var(--transition-base);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            margin: 5% auto;
+            padding: 2.5rem;
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideDown 0.4s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .close-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--danger-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-base);
+        }
+
+        .close-btn:hover {
+            background: var(--danger-color);
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* Search & Filter */
+        .search-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .search-container input,
+        .search-container select {
+            padding: 0.9rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            transition: all var(--transition-base);
+            background: var(--bg-secondary);
+        }
+
+        .search-container input:focus,
+        .search-container select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--primary-dark), var(--secondary-color));
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 0;
+                display: flex;
+                box-shadow: var(--shadow-sm);
+            }
+
+            .sidebar ul {
+                display: flex;
+                width: 100%;
+                overflow-x: auto;
+            }
+
+            .sidebar li {
+                flex: 1;
+                min-width: 150px;
+            }
+
+            .sidebar a {
+                padding: 1rem;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+                text-align: center;
+                font-size: 0.9rem;
+                justify-content: center;
+            }
+
+            .sidebar a:hover,
+            .sidebar a.active {
+                border-bottom-color: var(--primary-color);
+                border-left-color: transparent;
+                transform: translateX(0) translateY(-2px);
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .main-content {
+                padding: 1.5rem;
+            }
+
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .navbar {
+                padding: 1rem;
+            }
+
+            .navbar .logo {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-number {
+                font-size: 2.5rem;
+            }
+
+            .modal-content {
+                padding: 1.5rem;
+                margin: 10% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <div class="navbar">
+        <div class="logo">
+            <img src="image.png" alt="AR PG Logo">
+            <span>AR PG - Admin Panel</span>
+        </div>
+        <div class="user-info">
+            <span id="adminEmailDisplay">👤 Admin</span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <ul>
+                <li><a href="#dashboard" class="nav-link active" onclick="showSection('dashboard', event)">📊 Dashboard</a></li>
+                <li><a href="#students" class="nav-link" onclick="showSection('students', event)">👥 Students</a></li>
+                <li><a href="#payments" class="nav-link" onclick="showSection('payments', event)">💳 Payments</a></li>
+                <li><a href="#send-reminder" class="nav-link" onclick="showSection('send-reminder', event)">📢 Reminders</a></li>
+                <li><a href="announcement.html">📰 Announcements</a></li>
+                <li><a href="#reports" class="nav-link" onclick="showSection('reports', event)">📈 Reports</a></li>
+                <li> <a href="#inquiries" class="nav-link" onclick="showSection('inquiries', event)"> 📬 Inquiries</a></li>
+            </ul>
+            
+
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="section active">
+                <h1 class="page-title">Dashboard Overview</h1>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Students</div>
+                        <div class="stat-number" id="totalStudents">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Paid This Month</div>
+                        <div class="stat-number" id="paidThisMonth">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Pending Payments</div>
+                        <div class="stat-number" id="pendingPayments">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Revenue</div>
+                        <div class="stat-number" id="totalRevenue">₹0</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-title">Quick Actions</div>
+                    <button class="btn" onclick="openAddStudentModal()">➕ Add New Student</button>
+                    <button class="btn" onclick="showSection('send-reminder', event)" style="margin-left: 1rem;">📢 Send Reminder</button>
+                </div>
+            </div>
+
+            <!-- Students Section -->
+            <div id="students" class="section">
+                <h1 class="page-title">Student Management</h1>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <button class="btn" onclick="openAddStudentModal()">➕ Add New Student</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">All Students</div>
+                    
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="🔍 Search by name or phone..." onkeyup="searchStudents()">
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th>College</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTable">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-light); padding: 3rem;">No students added yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payments Section -->
+            <div id="payments" class="section">
+                <h1 class="page-title">Payment Tracking</h1>
+
+                <div class="card">
+                    <div class="card-title">Payment Status</div>
+                    
+                    <div class="search-container">
+                        <select id="paymentFilter" onchange="filterPayments()">
+                            <option value="">All Status</option>
+                            <option value="paid">Paid</option>
+                            <option value="pending">Pending</option>
+                            <option value="overdue">Overdue</option>
+                        </select>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Phone</th>
+                                    <th>Monthly Rent</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsTable">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-light); padding: 3rem;">No payment data available.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Send Reminder Section -->
+            <div id="send-reminder" class="section">
+                <h1 class="page-title">Send Payment Reminder</h1>
+
+                <div class="card">
+                    <div class="card-title">Send Reminders to Students</div>
+
+                    <div class="form-group">
+                        <label>Select Students:</label>
+                        <div style="margin: 1rem 0;">
+                            <label style="display: flex; align-items: center; margin-bottom: 0.8rem; font-weight: normal;">
+                                <input type="checkbox" id="selectAll" onchange="selectAllStudents()" style="margin-right: 0.5rem;">
+                                Select All Students
+                            </label>
+                            <div id="studentsList" style="border: 2px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md); max-height: 300px; overflow-y: auto; background: var(--bg-primary);">
+                                <p style="color: var(--text-light);">No students to select.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reminderMessage">Reminder Message</label>
+                        <textarea id="reminderMessage" placeholder="Enter your reminder message..." style="min-height: 120px;">Dear Student, Your monthly payment of ₹8,000 is due on 15th of this month. Please pay at the earliest.</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reminderType">Reminder Type</label>
+                        <select id="reminderType">
+                            <option value="payment">Payment Due</option>
+                            <option value="announcement">Announcement</option>
+                            <option value="maintenance">Maintenance Notice</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <button class="btn" onclick="sendReminder()">📢 Send Reminder</button>
+                </div>
+            </div>
+
+            <!-- Reports Section -->
+            <div id="reports" class="section">
+                <h1 class="page-title">Reports & Analytics</h1>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Collection</div>
+                        <div class="stat-number" id="totalCollected">₹0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Pending Amount</div>
+                        <div class="stat-number" id="pendingAmount">₹0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Collection Rate</div>
+                        <div class="stat-number" id="collectionRate">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Occupancy</div>
+                        <div class="stat-number" id="occupancy">0%</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Payment Summary</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Expected</th>
+                                    <th>Collected</th>
+                                    <th>Pending</th>
+                                    <th>Collection %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportsTable">
+                                <tr>
+                                    <td>Current Month</td>
+                                    <td id="expectedRev">₹0</td>
+                                    <td id="collectedRev">₹0</td>
+                                    <td id="pendingRev">₹0</td>
+                                    <td id="collectionPct">0%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Inquiries Section -->
+<div id="inquiries" class="section">
+  <h1 class="page-title">📬 User Inquiries</h1>
+
+  <div class="card">
+  <div class="card-title">
+    Recent Inquiries
+    <button class="btn btn-small" onclick="loadInquiries()">⟳ Refresh</button>
+  </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Room</th>
+            <th>Message</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="inquiriesTable">
+          <tr>
+            <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
+              Loading inquiries...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Student</h2>
+                <button class="close-btn" onclick="closeModal('addStudentModal')">&times;</button>
+            </div>
+            <form onsubmit="addStudent(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="newStudentName" placeholder="Enter student name" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="newStudentPhone" placeholder="Enter phone number" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="newStudentEmail" placeholder="Enter email address" required>
+                </div>
+                <div class="form-group">
+                    <label>Monthly Rent</label>
+                    <input type="number" id="newStudentRent" value="8000" required>
+                </div>
+                <button type="submit" class="btn">Add Student</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:5000/api';
+        
+        // Admin data storage
+        let adminData = {
+            students: []
+        };
+
+        // Check if admin is logged in
+        function checkAdminLogin() {
+            const adminToken = localStorage.getItem('adminToken');
+            const adminEmail = localStorage.getItem('adminEmail');
+
+            if (!adminToken || !adminEmail) {
+                alert('Please login first!');
+                window.location.href = 'admin-login.html';
+                return false;
+            }
+
+            // Check if token is expired
+            try {
+                const payload = JSON.parse(atob(adminToken.split('.')[1]));
+                if (payload.exp * 1000 < Date.now()) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminEmail');
+                    alert('Your session has expired. Please login again.');
+                    window.location.href = 'admin-login.html';
+                    return false;
+                }
+            } catch (e) {
+                alert('Invalid session. Please login again.');
+                window.location.href = 'admin-login.html';
+                return false;
+            }
+
+            return true;
+        }
+
+        // Load data on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            if (checkAdminLogin()) {
+                loadData();
+            }
+        });
+
+        async function loadData() {
+            // Display admin email
+            const adminEmail = localStorage.getItem('adminEmail');
+            if (adminEmail) {
+                document.getElementById('adminEmailDisplay').textContent = '👤 ' + adminEmail;
+            }
+
+            try {
+                // Get dashboard stats
+                const statsResponse = await fetch(BACKEND_URL + '/admin/dashboard-stats');
+                const statsData = await statsResponse.json();
+
+                if (statsData.success) {
+                    const stats = statsData.stats;
+                    document.getElementById('totalStudents').textContent = stats.totalStudents;
+                    document.getElementById('paidThisMonth').textContent = stats.paidThisMonth;
+                    document.getElementById('pendingPayments').textContent = stats.pendingPayments;
+                    document.getElementById('totalRevenue').textContent = '₹' + stats.totalRevenue.toLocaleString();
+                    document.getElementById('totalCollected').textContent = '₹' + (stats.paidThisMonth * 8000).toLocaleString();
+                    document.getElementById('pendingAmount').textContent = '₹' + (stats.pendingPayments * 8000).toLocaleString();
+                    document.getElementById('collectionRate').textContent = stats.totalStudents > 0 ? Math.round((stats.paidThisMonth / stats.totalStudents) * 100) + '%' : '0%';
+                }
+
+                // Get all students
+                const studentsResponse = await fetch(BACKEND_URL + '/admin/students');
+                const studentsData = await studentsResponse.json();
+
+                if (studentsData.success) {
+                    adminData.students = studentsData.students;
+                    updateStudentsTable();
+                    updatePaymentsTable();
+                    updateStudentsList();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Error connecting to server: ' + error.message);
+            }
+        }
+
+        function updateDashboard() {
+            const total = adminData.students.length;
+            const paid = adminData.students.filter(s => s.paymentStatus === 'paid').length;
+            const pending = total - paid;
+            const revenue = adminData.students.reduce((sum, s) => sum + 8000, 0);
+
+            document.getElementById('totalStudents').textContent = total;
+            document.getElementById('paidThisMonth').textContent = paid;
+            document.getElementById('pendingPayments').textContent = pending;
+            document.getElementById('totalRevenue').textContent = '₹' + revenue.toLocaleString();
+
+            // Update reports
+            document.getElementById('totalCollected').textContent = '₹' + (paid * 8000).toLocaleString();
+            document.getElementById('pendingAmount').textContent = '₹' + (pending * 8000).toLocaleString();
+            document.getElementById('collectionRate').textContent = total > 0 ? Math.round((paid / total) * 100) + '%' : '0%';
+            document.getElementById('occupancy').textContent = total > 0 ? '100%' : '0%';
+
+            // Update tables
+            updateStudentsTable();
+            updatePaymentsTable();
+            updateStudentsList();
+        }
+
+        function updateStudentsTable() {
+            const tbody = document.getElementById('studentsTable');
+            if (adminData.students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light); padding: 3rem;">No students added yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = adminData.students.map(s => `
+                <tr>
+                    <td>${s.fullName || 'N/A'}</td>
+                    <td>${s.phone}</td>
+                    <td>${s.email || 'N/A'}</td>
+                    <td>${s.college || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-small btn-danger" onclick="deleteStudent('${s.phone}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updatePaymentsTable() {
+            const tbody = document.getElementById('paymentsTable');
+            if (adminData.students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light); padding: 3rem;">No payment data available.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = adminData.students.map(s => {
+                const statusClass = s.paymentStatus === 'paid' ? 'badge-paid' : 'badge-pending';
+                return `
+                    <tr>
+                        <td>${s.fullName}</td>
+                        <td>${s.phone}</td>
+                        <td>₹8,000</td>
+                        <td>15-${new Date().toLocaleString('default', {month: 'long'})}</td>
+                        <td><span class="badge ${statusClass}">${s.paymentStatus}</span></td>
+                        <td>
+                            <button class="btn btn-small btn-success" onclick="markAsPaid('${s.phone}')">Mark Paid</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStudentsList() {
+            const list = document.getElementById('studentsList');
+            if (adminData.students.length === 0) {
+                list.innerHTML = '<p style="color: var(--text-light);">No students to select.</p>';
+                return;
+            }
+
+            list.innerHTML = adminData.students.map(s => `
+                <label style="display: flex; align-items: center; margin-bottom: 0.8rem; font-weight: normal;">
+                    <input type="checkbox" class="student-checkbox" value="${s.phone}" style="margin-right: 0.5rem;">
+                    ${s.fullName} (${s.phone})
+                </label>
+            `).join('');
+        }
+
+     function showSection(sectionId, event) {
+    event.preventDefault();
+    
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    
+    document.getElementById(sectionId).classList.add('active');
+    event.target.classList.add('active');
+
+    // Load inquiries when visiting the inquiries section
+    if (sectionId === 'inquiries') {
+        loadInquiries();
+    }
+}
+
+
+        function openAddStudentModal() {
+            document.getElementById('addStudentModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function addStudent(event) {
+            event.preventDefault();
+            
+            const student = {
+                fullName: document.getElementById('newStudentName').value,
+                phone: document.getElementById('newStudentPhone').value,
+                email: document.getElementById('newStudentEmail').value,
+                monthlyRent: document.getElementById('newStudentRent').value
+            };
+
+            // Send to backend
+            fetch(BACKEND_URL + '/admin/add-student', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(student)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal('addStudentModal');
+                    loadData();
+                    event.target.reset();
+                    alert('Student added successfully!');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+                console.error('Error:', error);
+            });
+        }
+
+        function deleteStudent(phone) {
+            if (confirm('Are you sure you want to delete this student?')) {
+                adminData.students = adminData.students.filter(s => s.phone !== phone);
+                updateDashboard();
+            }
+        }
+
+        function markAsPaid(phone) {
+            const student = adminData.students.find(s => s.phone === phone);
+            if (student) {
+                student.paymentStatus = 'paid';
+                updateDashboard();
+                alert('Payment marked as paid!');
+            }
+        }
+
+        function selectAllStudents() {
+            const checkboxes = document.querySelectorAll('.student-checkbox');
+            const selectAll = document.getElementById('selectAll');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        }
+
+        function sendReminder() {
+            const checked = document.querySelectorAll('.student-checkbox:checked');
+            const message = document.getElementById('reminderMessage').value;
+            const reminderType = document.getElementById('reminderType').value;
+
+            if (checked.length === 0) {
+                alert('Please select at least one student!');
+                return;
+            }
+
+            const selectedPhones = Array.from(checked).map(cb => cb.value);
+
+            // Send to backend
+            fetch(BACKEND_URL + '/admin/send-reminder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phones: selectedPhones,
+                    message: message,
+                    messageType: reminderType
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    document.getElementById('reminderMessage').value = '';
+                    document.getElementById('selectAll').checked = false;
+                    updateStudentsList();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+                console.error('Error:', error);
+            });
+        }
+
+        function searchStudents() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = adminData.students.filter(s => 
+                s.fullName.toLowerCase().includes(searchText) || 
+                s.phone.includes(searchText)
+            );
+
+            const tbody = document.getElementById('studentsTable');
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light); padding: 3rem;">No students found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(s => `
+                <tr>
+                    <td>${s.fullName}</td>
+                    <td>${s.phone}</td>
+                    <td>${s.email || 'N/A'}</td>
+                    <td>${s.college || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-small btn-danger" onclick="deleteStudent('${s.phone}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterPayments() {
+            const filter = document.getElementById('paymentFilter').value;
+            const filtered = filter ? adminData.students.filter(s => s.paymentStatus === filter) : adminData.students;
+
+            const tbody = document.getElementById('paymentsTable');
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light); padding: 3rem;">No payments found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(s => {
+                const statusClass = s.paymentStatus === 'paid' ? 'badge-paid' : 'badge-pending';
+                return `
+                    <tr>
+                        <td>${s.fullName}</td>
+                        <td>${s.phone}</td>
+                        <td>₹8,000</td>
+                        <td>15-${new Date().toLocaleString('default', {month: 'long'})}</td>
+                        <td><span class="badge ${statusClass}">${s.paymentStatus}</span></td>
+                        <td>
+                            <button class="btn btn-small btn-success" onclick="markAsPaid('${s.phone}')">Mark Paid</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminEmail');
+                alert('Logged out successfully!');
+                window.location.href = 'admin-login.html';
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('addStudentModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        // ==================== LOAD INQUIRIES ====================
+
+async function loadInquiries() {
+    const tbody = document.getElementById('inquiriesTable');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
+        Loading inquiries...
+      </td>
+    </tr>
+  `;
+  try {
+    const response = await fetch(BACKEND_URL + '/inquiries');
+    const data = await response.json();
+
+    const tbody = document.getElementById('inquiriesTable');
+
+    if (data.success && data.inquiries.length > 0) {
+      tbody.innerHTML = data.inquiries.map(inq => `
+        <tr>
+          <td>${inq.id}</td>
+          <td>${inq.name}</td>
+          <td>${inq.email}</td>
+          <td>${inq.phone}</td>
+          <td>${inq.room}</td>
+          <td>${inq.message}</td>
+          <td>${inq.date}</td>
+        </tr>
+      `).join('');
+    } else {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
+            No inquiries found.
+          </td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    console.error('Error loading inquiries:', err);
+    document.getElementById('inquiriesTable').innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center; color:var(--danger-color); padding:2rem;">
+          Error loading inquiries.
+        </td>
+      </tr>
+    `;
+  }
+}
+
+    </script>
+</body>
+</html>
+```
