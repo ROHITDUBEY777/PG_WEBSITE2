@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,7 +16,7 @@
             --success-color: #10b981;
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
-            
+
             /* Neutral Colors */
             --bg-primary: #f8fafc;
             --bg-secondary: #ffffff;
@@ -24,19 +24,19 @@
             --text-secondary: #64748b;
             --text-light: #94a3b8;
             --border-color: #e2e8f0;
-            
+
             /* Shadows */
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            
+
             /* Border Radius */
             --radius-sm: 6px;
             --radius-md: 10px;
             --radius-lg: 16px;
             --radius-xl: 20px;
-            
+
             /* Transitions */
             --transition-fast: 0.15s ease;
             --transition-base: 0.3s ease;
@@ -57,6 +57,49 @@
             overflow-x: hidden;
         }
 
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            /* Hidden on desktop */
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 1.5rem;
+            padding: 10px 15px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .mobile-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 70px;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                background: var(--bg-secondary);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 9999;
+                /* ✅ VERY IMPORTANT */
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+        }
+
         /* Navigation */
         .navbar {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
@@ -65,25 +108,36 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
+            /* ✅ Add spacing between items */
             box-shadow: var(--shadow-lg);
             position: sticky;
             top: 0;
             z-index: 100;
             backdrop-filter: blur(10px);
+            flex-wrap: wrap;
+            /* ✅ Allow wrapping on small screens */
         }
 
         .navbar .logo {
             display: flex;
             align-items: center;
             gap: 12px;
-            font-size: 1.5rem;
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            /* ✅ Responsive font size */
             font-weight: 700;
             letter-spacing: -0.5px;
             animation: slideInLeft 0.5s ease;
+            flex-shrink: 0;
+            /* ✅ Prevent shrinking */
         }
 
         .navbar .logo img {
             height: 40px;
+            width: 40px;
+            /* ✅ Fixed width */
+            object-fit: contain;
+            /* ✅ Maintain aspect ratio */
             border-radius: var(--radius-sm);
             transition: transform var(--transition-base);
         }
@@ -101,7 +155,7 @@
 
         .user-info span {
             font-weight: 500;
-            padding: 8px 16px;
+            padding: 8px 12px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: var(--radius-md);
             backdrop-filter: blur(10px);
@@ -249,10 +303,21 @@
             border-color: var(--primary-light);
         }
 
-        .stat-card:nth-child(1)::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
-        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #14b8a6); }
-        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #f59e0b, #f97316); }
-        .stat-card:nth-child(4)::before { background: linear-gradient(90deg, #ec4899, #ef4444); }
+        .stat-card:nth-child(1)::before {
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        }
+
+        .stat-card:nth-child(2)::before {
+            background: linear-gradient(90deg, #10b981, #14b8a6);
+        }
+
+        .stat-card:nth-child(3)::before {
+            background: linear-gradient(90deg, #f59e0b, #f97316);
+        }
+
+        .stat-card:nth-child(4)::before {
+            background: linear-gradient(90deg, #ec4899, #ef4444);
+        }
 
         .stat-number {
             font-size: 3rem;
@@ -305,17 +370,19 @@
         .table-container {
             overflow-x: auto;
             border-radius: var(--radius-md);
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
             width: 100%;
+            min-width: 600px;
             border-collapse: separate;
             border-spacing: 0;
         }
 
         th {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            padding: 1.2rem;
+            padding: 0.8rem;
             text-align: left;
             font-weight: 700;
             color: var(--primary-color);
@@ -336,10 +403,11 @@
         }
 
         td {
-            padding: 1.2rem;
+            padding: 0.8rem;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-primary);
             transition: all var(--transition-fast);
+            font-size: 0.85rem;
         }
 
         tr {
@@ -384,12 +452,70 @@
             color: #991b1b;
             border: 1px solid #fca5a5;
         }
+        /* ✅ IMPROVED CHECKBOX STYLING */
+#studentsList input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    margin-right: 10px;
+    accent-color: #6366f1;
+}
+
+#studentsList label {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    border: 1px solid #e2e8f0;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+#studentsList label:hover {
+    background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+    border-color: #cbd5e1;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+}
+
+#studentsList input[type="checkbox"]:checked + span {
+    color: #6366f1;
+    font-weight: 600;
+}
+
+/* ✅ CUSTOM SCROLLBAR FOR STUDENTS LIST */
+#studentsList::-webkit-scrollbar {
+    width: 8px;
+}
+
+#studentsList::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+#studentsList::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+#studentsList::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ✅ EMPTY STATE STYLING */
+#studentsList p {
+    margin: 0;
+}
 
         /* Buttons */
         .btn {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: white;
-            padding: 12px 28px;
+            padding: 14px 24px;
             border: none;
             border-radius: var(--radius-md);
             cursor: pointer;
@@ -399,6 +525,7 @@
             box-shadow: var(--shadow-md);
             position: relative;
             overflow: hidden;
+            min-height: 44px;
         }
 
         .btn::before {
@@ -429,8 +556,9 @@
         }
 
         .btn-small {
-            padding: 8px 16px;
+            padding: 10px 18px;
             font-size: 0.85rem;
+            min-height: 44px;
         }
 
         .btn-danger {
@@ -471,7 +599,7 @@
             border: 2px solid var(--border-color);
             border-radius: var(--radius-md);
             font-family: inherit;
-            font-size: 1rem;
+            font-size: 16px;
             transition: all var(--transition-base);
             background: var(--bg-secondary);
             color: var(--text-primary);
@@ -597,6 +725,7 @@
             from {
                 opacity: 0;
             }
+
             to {
                 opacity: 1;
             }
@@ -607,6 +736,7 @@
                 opacity: 0;
                 transform: translateX(-30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateX(0);
@@ -618,6 +748,7 @@
                 opacity: 0;
                 transform: translateX(30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateX(0);
@@ -629,6 +760,7 @@
                 opacity: 0;
                 transform: translateY(-20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -640,6 +772,7 @@
                 opacity: 0;
                 transform: translateY(20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -651,6 +784,7 @@
                 opacity: 0;
                 transform: scale(0.9);
             }
+
             to {
                 opacity: 1;
                 transform: scale(1);
@@ -681,41 +815,6 @@
             .container {
                 flex-direction: column;
             }
-
-            .sidebar {
-                width: 100%;
-                padding: 0;
-                display: flex;
-                box-shadow: var(--shadow-sm);
-            }
-
-            .sidebar ul {
-                display: flex;
-                width: 100%;
-                overflow-x: auto;
-            }
-
-            .sidebar li {
-                flex: 1;
-                min-width: 150px;
-            }
-
-            .sidebar a {
-                padding: 1rem;
-                border-left: none;
-                border-bottom: 3px solid transparent;
-                text-align: center;
-                font-size: 0.9rem;
-                justify-content: center;
-            }
-
-            .sidebar a:hover,
-            .sidebar a.active {
-                border-bottom-color: var(--primary-color);
-                border-left-color: transparent;
-                transform: translateX(0) translateY(-2px);
-            }
-
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -730,14 +829,6 @@
 
             .page-title {
                 font-size: 2rem;
-            }
-
-            .navbar {
-                padding: 1rem;
-            }
-
-            .navbar .logo {
-                font-size: 1.2rem;
             }
         }
 
@@ -757,6 +848,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Navigation -->
     <div class="navbar">
@@ -764,6 +856,12 @@
             <img src="image.png" alt="AR PG Logo">
             <span>AR PG - Admin Panel</span>
         </div>
+
+        <!-- ✅ ADD THIS HAMBURGER BUTTON -->
+        <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+            ☰
+        </button>
+
         <div class="user-info">
             <span id="adminEmailDisplay">👤 Admin</span>
             <button class="logout-btn" onclick="logout()">Logout</button>
@@ -775,15 +873,20 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <ul>
-                <li><a href="#dashboard" class="nav-link active" onclick="showSection('dashboard', event)">📊 Dashboard</a></li>
+                <li><a href="#dashboard" class="nav-link active" onclick="showSection('dashboard', event)">📊
+                        Dashboard</a></li>
                 <li><a href="#students" class="nav-link" onclick="showSection('students', event)">👥 Students</a></li>
                 <li><a href="#payments" class="nav-link" onclick="showSection('payments', event)">💳 Payments</a></li>
-                <li><a href="#send-reminder" class="nav-link" onclick="showSection('send-reminder', event)">📢 Reminders</a></li>
+
+                <li><a href="#send-reminder" class="nav-link" onclick="showSection('send-reminder', event)">📢
+                        Reminders</a></li>
                 <li><a href="announcement.html">📰 Announcements</a></li>
+                <li><a href="#current-bills" class="nav-link" onclick="showSection('current-bills', event)">⚡ Current Bills</a></li>
+
                 <li><a href="#reports" class="nav-link" onclick="showSection('reports', event)">📈 Reports</a></li>
-                <li> <a href="#inquiries" class="nav-link" onclick="showSection('inquiries', event)"> 📬 Inquiries</a></li>
+                <li> <a href="#inquiries" class="nav-link" onclick="showSection('inquiries', event)"> 📬 Inquiries</a> </li>
             </ul>
-            
+
 
         </div>
 
@@ -816,7 +919,8 @@
                 <div class="card">
                     <div class="card-title">Quick Actions</div>
                     <button class="btn" onclick="openAddStudentModal()">➕ Add New Student</button>
-                    <button class="btn" onclick="showSection('send-reminder', event)" style="margin-left: 1rem;">📢 Send Reminder</button>
+                    <button class="btn" onclick="showSection('send-reminder', event)" style="margin-left: 1rem;">📢 Send
+                        Reminder</button>
                 </div>
             </div>
 
@@ -824,37 +928,78 @@
             <div id="students" class="section">
                 <h1 class="page-title">Student Management</h1>
 
-                <div style="margin-bottom: 1.5rem;">
-                    <button class="btn" onclick="openAddStudentModal()">➕ Add New Student</button>
-                </div>
+<div style="margin-bottom: 1.5rem; display:flex; gap:10px; flex-wrap:wrap;">
+    <button class="btn" onclick="openAddStudentModal()">➕ Add New Student</button>
+    <button class="btn btn-success" onclick="exportToExcel()">📤 Export to Excel</button>
+</div>
 
                 <div class="card">
                     <div class="card-title">All Students</div>
-                    
+
                     <div class="search-container">
-                        <input type="text" id="searchInput" placeholder="🔍 Search by name or phone..." onkeyup="searchStudents()">
+                        <input type="text" id="searchInput" placeholder="🔍 Search by name or phone..."
+                            onkeyup="searchStudents()">
                     </div>
 
                     <div class="table-container">
                         <table>
                             <thead>
                                 <tr>
+                                    <th><input type="checkbox" onclick="toggleSelectAll(this)"></th>
                                     <th>Name</th>
                                     <th>Phone</th>
                                     <th>Email</th>
+                                    <th>Room Number</th> <!-- ✅ ADD -->
+                                    <th>Room Type</th> <!-- ✅ ADD -->
+                                    <th>Monthly Rent</th> <!-- ✅ ADD -->
                                     <th>College</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="studentsTable">
                                 <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--text-light); padding: 3rem;">No students added yet.</td>
+                                    <td colspan="9"
+                                        style="text-align: center; color: var(--text-light); padding: 3rem;">No students
+                                        added yet.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+            <div id="current-bills" class="section">
+    <h1 class="page-title">Current Bill Payments</h1>
+
+    <div class="card">
+        <div class="card-title">
+            Pending Verifications
+            <button class="btn btn-small" onclick="loadCurrentBills()">⟳ Refresh</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Phone</th>
+                        <th>Amount</th>
+                        <th>Month</th>
+                        <th>Date</th>
+                        <th>Proof</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="currentBillsTable">
+                    <tr>
+                        <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
+                            Loading...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
             <!-- Payments Section -->
             <div id="payments" class="section">
@@ -862,7 +1007,7 @@
 
                 <div class="card">
                     <div class="card-title">Payment Status</div>
-                    
+
                     <div class="search-container">
                         <select id="paymentFilter" onchange="filterPayments()">
                             <option value="">All Status</option>
@@ -886,7 +1031,9 @@
                             </thead>
                             <tbody id="paymentsTable">
                                 <tr>
-                                    <td colspan="6" style="text-align: center; color: var(--text-light); padding: 3rem;">No payment data available.</td>
+                                    <td colspan="6"
+                                        style="text-align: center; color: var(--text-light); padding: 3rem;">No payment
+                                        data available.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -894,45 +1041,131 @@
                 </div>
             </div>
 
-            <!-- Send Reminder Section -->
-            <div id="send-reminder" class="section">
-                <h1 class="page-title">Send Payment Reminder</h1>
+          
+          <!-- Send Reminder Section -->
+<!-- Send Reminder Section -->
+<div id="send-reminder" class="section">
+    <h1 class="page-title">Send Payment Reminder</h1>
 
-                <div class="card">
-                    <div class="card-title">Send Reminders to Students</div>
+    <div class="card">
+        <div class="card-title">
+            <span>📢 Send Reminders to Students</span>
+        </div>
 
-                    <div class="form-group">
-                        <label>Select Students:</label>
-                        <div style="margin: 1rem 0;">
-                            <label style="display: flex; align-items: center; margin-bottom: 0.8rem; font-weight: normal;">
-                                <input type="checkbox" id="selectAll" onchange="selectAllStudents()" style="margin-right: 0.5rem;">
-                                Select All Students
-                            </label>
-                            <div id="studentsList" style="border: 2px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md); max-height: 300px; overflow-y: auto; background: var(--bg-primary);">
-                                <p style="color: var(--text-light);">No students to select.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="reminderMessage">Reminder Message</label>
-                        <textarea id="reminderMessage" placeholder="Enter your reminder message..." style="min-height: 120px;">Dear Student, Your monthly payment of ₹8,000 is due on 15th of this month. Please pay at the earliest.</textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="reminderType">Reminder Type</label>
-                        <select id="reminderType">
-                            <option value="payment">Payment Due</option>
-                            <option value="announcement">Announcement</option>
-                            <option value="maintenance">Maintenance Notice</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-
-                    <button class="btn" onclick="sendReminder()">📢 Send Reminder</button>
-                </div>
+        <!-- ✅ IMPROVED SELECT STUDENTS SECTION -->
+        <div class="form-group">
+            <label style="font-size: 1.1rem; margin-bottom: 1rem; display: block;">
+                <strong>Select Students:</strong>
+            </label>
+            
+            <!-- Select All Checkbox -->
+            <div style="background: #f0f9ff; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 2px solid #e0e7ff;">
+                <label style="display: flex; align-items: center; margin: 0; font-weight: 600; cursor: pointer;">
+                    <input type="checkbox" id="selectAll" onchange="selectAllStudents()" 
+                           style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                    <span style="font-size: 1.05rem; color: #1e293b;">Select All Students</span>
+                </label>
             </div>
+            
+            <!-- Students List Container -->
+            <div id="studentsList" style="
+                border: 2px solid #e2e8f0; 
+                padding: 20px; 
+                border-radius: 12px; 
+                max-height: 350px; 
+                overflow-y: auto; 
+                background: #fafafa;
+                box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+            ">
+                <p style="color: #94a3b8; text-align: center; padding: 2rem; font-size: 1rem;">
+                    📋 No students to select. Add students first.
+                </p>
+            </div>
+            
+            <!-- Selected Count Display -->
+            <div id="selectedCountDisplay" style="
+                margin-top: 12px; 
+                padding: 10px 15px; 
+                background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); 
+                border-radius: 8px; 
+                border-left: 4px solid #10b981;
+                display: none;
+            ">
+                <span style="font-weight: 600; color: #059669;">
+                    ✅ <span id="selectedCountNumber">0</span> student(s) selected
+                </span>
+            </div>
+        </div>
 
+        <!-- ✅ IMPROVED MESSAGE TEXTAREA -->
+        <div class="form-group" style="margin-top: 2rem;">
+            <label for="reminderMessage" style="font-size: 1.05rem; font-weight: 600; margin-bottom: 10px; display: block;">
+                💬 Reminder Message
+            </label>
+            <textarea id="reminderMessage" 
+                      placeholder="Enter your reminder message here..."
+                      style="
+                          min-height: 140px; 
+                          font-size: 15px; 
+                          line-height: 1.6;
+                          resize: vertical;
+                          border: 2px solid #e2e8f0;
+                          border-radius: 10px;
+                          padding: 15px;
+                          font-family: inherit;
+                      ">Dear Student, Your monthly payment of ₹8,000 is due on 15th of this month. Please pay at the earliest.</textarea>
+            <div style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">
+                💡 <em>Tip: Personalize your message for better engagement</em>
+            </div>
+        </div>
+
+        <!-- ✅ IMPROVED REMINDER TYPE DROPDOWN -->
+        <div class="form-group">
+            <label for="reminderType" style="font-size: 1.05rem; font-weight: 600; margin-bottom: 10px; display: block;">
+                📋 Reminder Type
+            </label>
+            <select id="reminderType" style="
+                font-size: 15px;
+                padding: 12px 15px;
+                border: 2px solid #e2e8f0;
+                border-radius: 10px;
+                cursor: pointer;
+                background: white;
+            ">
+                <option value="payment">💰 Payment Due</option>
+                <option value="announcement">📢 Announcement</option>
+                <option value="maintenance">🔧 Maintenance Notice</option>
+                <option value="other">📝 Other</option>
+            </select>
+        </div>
+
+        <!-- ✅ IMPROVED SEND BUTTON -->
+        <div style="margin-top: 2rem; display: flex; gap: 15px; flex-wrap: wrap;">
+            <button class="btn" onclick="sendReminder()" style="
+                flex: 1;
+                min-width: 200px;
+                padding: 16px 30px;
+                font-size: 1.05rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            ">
+                📢 Send Reminder
+            </button>
+            
+            <button class="btn btn-secondary" onclick="clearReminderForm()" style="
+                padding: 16px 30px;
+                font-size: 1.05rem;
+                background: white;
+                color: #6366f1;
+                border: 2px solid #6366f1;
+            ">
+                🔄 Clear Form
+            </button>
+        </div>
+    </div>
+</div>
             <!-- Reports Section -->
             <div id="reports" class="section">
                 <h1 class="page-title">Reports & Analytics</h1>
@@ -983,104 +1216,210 @@
                 </div>
             </div>
             <!-- Inquiries Section -->
-<div id="inquiries" class="section">
-  <h1 class="page-title">📬 User Inquiries</h1>
+            <div id="inquiries" class="section">
+                <h1 class="page-title">📬 User Inquiries</h1>
 
-  <div class="card">
-  <div class="card-title">
-    Recent Inquiries
-    <button class="btn btn-small" onclick="loadInquiries()">⟳ Refresh</button>
-  </div>
+                <div class="card">
+                    <div class="card-title">
+                        Recent Inquiries
+                        <button class="btn btn-small" onclick="loadInquiries()">⟳ Refresh</button>
+                    </div>
 
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Room</th>
-            <th>Message</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody id="inquiriesTable">
-          <tr>
-            <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
-              Loading inquiries...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Room</th>
+                                    <th>Message</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inquiriesTable">
+                                <tr>
+                                    <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
+                                        Loading inquiries...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
 
     <!-- Add Student Modal -->
-    <div id="addStudentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Add New Student</h2>
-                <button class="close-btn" onclick="closeModal('addStudentModal')">&times;</button>
-            </div>
-            <form onsubmit="addStudent(event)">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" id="newStudentName" placeholder="Enter student name" required>
-                </div>
-                <div class="form-group">
-                    <label>Phone Number</label>
-                    <input type="tel" id="newStudentPhone" placeholder="Enter phone number" required>
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="newStudentEmail" placeholder="Enter email address" required>
-                </div>
-                <div class="form-group">
-                    <label>Monthly Rent</label>
-                    <input type="number" id="newStudentRent" value="8000" required>
-                </div>
-                <button type="submit" class="btn">Add Student</button>
-            </form>
+<!-- Add Student Modal -->
+<div id="addStudentModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Student</h2>
+            <button class="close-btn" onclick="closeModal('addStudentModal')">&times;</button>
         </div>
+        <form onsubmit="addStudent(event)">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="newStudentName" placeholder="Enter student name" required>
+            </div>
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" id="newStudentPhone" placeholder="Enter phone number" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="newStudentEmail" placeholder="Enter email address" required>
+            </div>
+            
+            <!-- ✅ NEW: Room Number Input -->
+            <div class="form-group">
+                <label>Room Number</label>
+                <input type="text" id="newStudentRoom" placeholder="e.g., 101, 202, 305" required>
+                <small style="color: #64748b; font-size: 0.85rem; margin-top: 5px; display: block;">
+                    💡 Tip: Use format like 101 (1st floor), 202 (2nd floor), 305 (3rd floor)
+                </small>
+            </div>
+            
+            <!-- ✅ NEW: Room Type Dropdown -->
+            <div class="form-group">
+                <label>Room Type</label>
+                <select id="newStudentRoomType" required>
+                    <option value="">Select Room Type</option>
+                    <option value="Single">Single Bed</option>
+                    <option value="2-Bed">2-Bed Sharing</option>
+                    <option value="3-Bed">3-Bed Sharing</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Monthly Rent (₹)</label>
+                <input type="number" id="newStudentRent" placeholder="Enter monthly rent" value="7500" required>
+            </div>
+            <button type="submit" class="btn">Add Student</button>
+        </form>
     </div>
+</div>
 
     <script>
-        const BACKEND_URL = 'http://localhost:5000/api';
         
+       const BACKEND_URL = (() => {
+    const hostname = window.location.hostname;
+    
+    // Local development (works with mobile testing)
+    if (hostname === 'localhost' || 
+        hostname === '127.0.0.1' || 
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        hostname.endsWith('.local')) {
+        return `http://${hostname}:5000/api`;
+    }
+    
+    // Option 1: If frontend and backend are on SAME domain
+    return `${window.location.protocol}//${hostname}/api`;
+    
+    // Option 2: If backend is on a different domain (e.g., Render.com)
+    // return 'https://arpg-backend.onrender.com/api';
+})();
+
+console.log('✅ Using BACKEND_URL:', BACKEND_URL);
+
         // Admin data storage
         let adminData = {
             students: []
         };
 
         // Check if admin is logged in
+        // Check if admin is logged in
+        // ✅ XSS Protection Function
+        function escapeHtml(text) {
+            if (!text) return 'N/A';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        // ✅ Timeout Protection Function
+        async function fetchWithTimeout(url, options = {}, timeout = 10000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout - please check your connection');
+                }
+                throw error;
+            }
+        }
+        // ✅ Force HTTPS in production
+        if (typeof window !== 'undefined') {
+            const hostname = location.hostname;
+            const isLocalNetwork =
+                hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
+                hostname.startsWith('192.168.') ||
+                hostname.startsWith('10.') ||
+                hostname.endsWith('.local');
+
+            if (location.protocol !== 'https:' && !isLocalNetwork) {
+                location.replace(`https:${location.href.substring(location.protocol.length)}`);
+            }
+        }
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function (e) {
+            const sidebar = document.querySelector('.sidebar');
+            const menuBtn = document.getElementById('mobileMenuBtn');
+
+            if (sidebar && !sidebar.contains(e.target) && e.target !== menuBtn) {
+                sidebar.classList.remove('mobile-open');
+            }
+        });
         function checkAdminLogin() {
             const adminToken = localStorage.getItem('adminToken');
             const adminEmail = localStorage.getItem('adminEmail');
 
             if (!adminToken || !adminEmail) {
-                alert('Please login first!');
-                window.location.href = 'admin-login.html';
+                alert('⚠️ Please login first!');
+                window.location.href = 'auth.html';
                 return false;
             }
 
             // Check if token is expired
             try {
-                const payload = JSON.parse(atob(adminToken.split('.')[1]));
-                if (payload.exp * 1000 < Date.now()) {
+                const tokenData = JSON.parse(atob(adminToken));
+                const now = Date.now() / 1000;
+
+                if (tokenData.exp < now) {
+                    console.log('⚠️ Token expired at:', new Date(tokenData.exp * 1000));
                     localStorage.removeItem('adminToken');
                     localStorage.removeItem('adminEmail');
-                    alert('Your session has expired. Please login again.');
-                    window.location.href = 'admin-login.html';
+                    alert('⚠️ Your session has expired. Please login again.');
+                    window.location.href = 'auth.html';
                     return false;
                 }
+
+                console.log('✅ Token valid until:', new Date(tokenData.exp * 1000));
             } catch (e) {
-                alert('Invalid session. Please login again.');
-                window.location.href = 'admin-login.html';
+                console.error('❌ Token validation error:', e);
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminEmail');
+                alert('⚠️ Invalid session. Please login again.');
+                window.location.href = 'auth.html';
                 return false;
             }
 
@@ -1088,7 +1427,7 @@
         }
 
         // Load data on page load
-        window.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', function () {
             if (checkAdminLogin()) {
                 loadData();
             }
@@ -1103,7 +1442,17 @@
 
             try {
                 // Get dashboard stats
-                const statsResponse = await fetch(BACKEND_URL + '/admin/dashboard-stats');
+                const statsResponse = await fetchWithTimeout(BACKEND_URL + '/admin/dashboard-stats', {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!statsResponse.ok) {
+                    throw new Error(`HTTP ${statsResponse.status}: ${statsResponse.statusText}`);
+                }
+
                 const statsData = await statsResponse.json();
 
                 if (statsData.success) {
@@ -1112,121 +1461,417 @@
                     document.getElementById('paidThisMonth').textContent = stats.paidThisMonth;
                     document.getElementById('pendingPayments').textContent = stats.pendingPayments;
                     document.getElementById('totalRevenue').textContent = '₹' + stats.totalRevenue.toLocaleString();
-                    document.getElementById('totalCollected').textContent = '₹' + (stats.paidThisMonth * 8000).toLocaleString();
-                    document.getElementById('pendingAmount').textContent = '₹' + (stats.pendingPayments * 8000).toLocaleString();
+                    // ✅ Calculate actual revenue based on student rents
+
+                    document.getElementById('totalCollected').textContent = '₹' + (stats.totalRevenue).toLocaleString();
+                const pendingAmount =
+  typeof stats.pendingAmount === 'number'
+    ? stats.pendingAmount
+    : (stats.pendingPayments || 0) * 8000;
+
+document.getElementById('pendingAmount').textContent =
+  '₹' + pendingAmount.toLocaleString();
                     document.getElementById('collectionRate').textContent = stats.totalStudents > 0 ? Math.round((stats.paidThisMonth / stats.totalStudents) * 100) + '%' : '0%';
                 }
 
                 // Get all students
-                const studentsResponse = await fetch(BACKEND_URL + '/admin/students');
+                const studentsResponse = await fetchWithTimeout(BACKEND_URL + '/admin/students', {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!studentsResponse.ok) {
+                    throw new Error(`HTTP ${studentsResponse.status}: ${studentsResponse.statusText}`);
+                }
+
                 const studentsData = await studentsResponse.json();
 
-                if (studentsData.success) {
-                    adminData.students = studentsData.students;
-                    updateStudentsTable();
-                    updatePaymentsTable();
-                    updateStudentsList();
-                }
+         if (studentsData.success) {
+    adminData.students = studentsData.students;
+    updateDashboard(); // ✅ This updates everything including reports
+}
+
             } catch (error) {
-                console.error('Error loading data:', error);
-                alert('Error connecting to server: ' + error.message);
+                console.error('❌ Error loading data:', error);
+
+                // Show user-friendly error message
+                if (error.message.includes('timeout')) {
+                    alert('⚠️ Connection timeout. Please check your internet and try again.');
+                } else if (error.message.includes('401')) {
+                    alert('⚠️ Session expired. Please login again.');
+                    logout();
+                } else {
+                    alert('⚠️ Error loading dashboard data: ' + error.message);
+                }
             }
         }
-
-        function updateDashboard() {
-            const total = adminData.students.length;
-            const paid = adminData.students.filter(s => s.paymentStatus === 'paid').length;
-            const pending = total - paid;
-            const revenue = adminData.students.reduce((sum, s) => sum + 8000, 0);
-
-            document.getElementById('totalStudents').textContent = total;
-            document.getElementById('paidThisMonth').textContent = paid;
-            document.getElementById('pendingPayments').textContent = pending;
-            document.getElementById('totalRevenue').textContent = '₹' + revenue.toLocaleString();
-
-            // Update reports
-            document.getElementById('totalCollected').textContent = '₹' + (paid * 8000).toLocaleString();
-            document.getElementById('pendingAmount').textContent = '₹' + (pending * 8000).toLocaleString();
-            document.getElementById('collectionRate').textContent = total > 0 ? Math.round((paid / total) * 100) + '%' : '0%';
-            document.getElementById('occupancy').textContent = total > 0 ? '100%' : '0%';
-
-            // Update tables
-            updateStudentsTable();
-            updatePaymentsTable();
-            updateStudentsList();
-        }
-
-        function updateStudentsTable() {
-            const tbody = document.getElementById('studentsTable');
-            if (adminData.students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light); padding: 3rem;">No students added yet.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = adminData.students.map(s => `
-                <tr>
-                    <td>${s.fullName || 'N/A'}</td>
-                    <td>${s.phone}</td>
-                    <td>${s.email || 'N/A'}</td>
-                    <td>${s.college || 'N/A'}</td>
-                    <td>
-                        <button class="btn btn-small btn-danger" onclick="deleteStudent('${s.phone}')">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function updatePaymentsTable() {
-            const tbody = document.getElementById('paymentsTable');
-            if (adminData.students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light); padding: 3rem;">No payment data available.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = adminData.students.map(s => {
-                const statusClass = s.paymentStatus === 'paid' ? 'badge-paid' : 'badge-pending';
-                return `
-                    <tr>
-                        <td>${s.fullName}</td>
-                        <td>${s.phone}</td>
-                        <td>₹8,000</td>
-                        <td>15-${new Date().toLocaleString('default', {month: 'long'})}</td>
-                        <td><span class="badge ${statusClass}">${s.paymentStatus}</span></td>
-                        <td>
-                            <button class="btn btn-small btn-success" onclick="markAsPaid('${s.phone}')">Mark Paid</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function updateStudentsList() {
-            const list = document.getElementById('studentsList');
-            if (adminData.students.length === 0) {
-                list.innerHTML = '<p style="color: var(--text-light);">No students to select.</p>';
-                return;
-            }
-
-            list.innerHTML = adminData.students.map(s => `
-                <label style="display: flex; align-items: center; margin-bottom: 0.8rem; font-weight: normal;">
-                    <input type="checkbox" class="student-checkbox" value="${s.phone}" style="margin-right: 0.5rem;">
-                    ${s.fullName} (${s.phone})
-                </label>
-            `).join('');
-        }
-
-     function showSection(sectionId, event) {
+ async function addStudent(event) {
     event.preventDefault();
+
+    const fullName = document.getElementById('newStudentName').value.trim();
+    const phone = document.getElementById('newStudentPhone').value.trim();
+    const email = document.getElementById('newStudentEmail').value.trim();
+    const roomNumber = document.getElementById('newStudentRoom').value.trim();
+    const roomType = document.getElementById('newStudentRoomType').value;
+    const monthlyRent = parseInt(document.getElementById('newStudentRent').value);
+
+    // Validations
+    if (!fullName || fullName.length < 3) {
+        alert('Please enter a valid name (minimum 3 characters)');
+        return;
+    }
+
+    if (!/^[0-9]{10}$/.test(phone)) {
+        alert('Please enter a valid 10-digit phone number');
+        return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address');
+        return;
+    }
+
+    if (!roomNumber || roomNumber.length < 2) {
+        alert('Please enter a valid room number (e.g., 101, 202)');
+        return;
+    }
+
+    if (!roomType) {
+        alert('Please select a room type');
+        return;
+    }
+
+    if (isNaN(monthlyRent) || monthlyRent < 1000) {
+        alert('Please enter a valid monthly rent (minimum ₹1000)');
+        return;
+    }
+
+    const student = {
+        fullName: fullName,
+        phone: phone,
+        email: email,
+        roomNumber: roomNumber,
+        roomType: roomType,
+        monthlyRent: monthlyRent
+    };
+
+    try {
+        // ✅ CHECK if student exists first
+        const checkResponse = await fetchWithTimeout(BACKEND_URL + '/student/' + phone);
+        const checkData = await checkResponse.json();
+
+        let endpoint, successMessage;
+
+        if (checkData.success) {
+            // Student EXISTS - UPDATE
+            endpoint = '/admin/update-student';
+            successMessage = '✅ Student updated successfully!\n\nRoom: ' + roomNumber + '\nType: ' + roomType;
+        } else {
+            // Student DOESN'T EXIST - ADD
+            endpoint = '/admin/add-student';
+            successMessage = '✅ Student added successfully!\n\nRoom: ' + roomNumber + '\nType: ' + roomType + '\n\nPassword sent to email.';
+        }
+
+        const response = await fetchWithTimeout(BACKEND_URL + endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(student)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeModal('addStudentModal');
+            await loadData();
+            event.target.reset();
+            alert(successMessage);
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+
+    } catch (error) {
+        console.error('❌ Error:', error);
+        
+        if (error.message.includes('timeout')) {
+            alert('⚠️ Request timeout. Please try again.');
+        } else if (error.message.includes('401')) {
+            alert('⚠️ Session expired. Please login again.');
+            logout();
+        } else {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+}
+function updateDashboard() {
+    const total = adminData.students.length;
+    const paid = adminData.students.filter(s => s.paymentStatus === 'paid').length;
+    const pending = total - paid;
     
+    // ✅ Calculate actual revenue based on individual rents
+    const totalExpected = adminData.students.reduce((sum, s) => sum + (s.monthlyRent || 0), 0);
+    const paidAmount = adminData.students
+        .filter(s => s.paymentStatus === 'paid')
+        .reduce((sum, s) => sum + (s.monthlyRent || 0), 0);
+    const pendingAmount = adminData.students
+        .filter(s => s.paymentStatus !== 'paid')
+        .reduce((sum, s) => sum + (s.monthlyRent || 0), 0);
+
+    document.getElementById('totalStudents').textContent = total;
+    document.getElementById('paidThisMonth').textContent = paid;
+    document.getElementById('pendingPayments').textContent = pending;
+    document.getElementById('totalRevenue').textContent = '₹' + totalExpected.toLocaleString();
+
+    // ✅ Update reports with actual amounts
+    document.getElementById('totalCollected').textContent = '₹' + paidAmount.toLocaleString();
+    document.getElementById('pendingAmount').textContent = '₹' + pendingAmount.toLocaleString();
+    document.getElementById('collectionRate').textContent = total > 0 ? Math.round((paid / total) * 100) + '%' : '0%';
+    document.getElementById('occupancy').textContent = total > 0 ? '100%' : '0%';
+    
+    // ✅ ADD THIS: Update Payment Summary Table
+    document.getElementById('expectedRev').textContent = '₹' + totalExpected.toLocaleString();
+    document.getElementById('collectedRev').textContent = '₹' + paidAmount.toLocaleString();
+    document.getElementById('pendingRev').textContent = '₹' + pendingAmount.toLocaleString();
+    document.getElementById('collectionPct').textContent = totalExpected > 0 ? Math.round((paidAmount / totalExpected) * 100) + '%' : '0%';
+
+    // Update tables
+    updateStudentsTable();
+    updatePaymentsTable();
+    updateStudentsList();
+}
+
+ function updateStudentsTable() {
+    const tbody = document.getElementById('studentsTable');
+    if (adminData.students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-light); padding: 3rem;">No students added yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = adminData.students.map(s => `
+    <tr>
+        <td><input type="checkbox"></td>
+        <td>${escapeHtml(s.fullName)}</td>
+        <td>${escapeHtml(s.phone)}</td>
+        <td>${escapeHtml(s.email)}</td>
+        <td>${escapeHtml(s.roomNumber || 'Not Assigned')}</td>
+        <td>${escapeHtml(s.roomType || 'N/A')}</td>
+        <td>₹${(s.monthlyRent || 0).toLocaleString()}</td>
+        <td>${escapeHtml(s.college || 'N/A')}</td>
+        <td>
+            <button class="btn btn-small btn-success" onclick='editStudent(${JSON.stringify(s).replace(/'/g, "&apos;")})' style="margin-right: 5px;">Edit</button>
+            <button class="btn btn-small btn-danger" onclick="deleteStudent('${escapeHtml(s.phone)}')">Delete</button>
+        </td>
+    </tr>
+`).join('');
+}
+// ✅ NEW FUNCTION: Edit existing student
+function editStudent(student) {
+    // Pre-fill the modal with existing data
+    document.getElementById('newStudentName').value = student.fullName;
+    document.getElementById('newStudentPhone').value = student.phone;
+    document.getElementById('newStudentPhone').readOnly = true; // Don't allow phone change
+    document.getElementById('newStudentEmail').value = student.email;
+    document.getElementById('newStudentRoom').value = student.roomNumber || '';
+    document.getElementById('newStudentRoomType').value = student.roomType || '';
+    document.getElementById('newStudentRent').value = student.monthlyRent || 7500;
+    
+    // Change modal title
+    document.querySelector('#addStudentModal .modal-header h2').textContent = 'Edit Student Details';
+    
+    // Change button text
+    const submitBtn = document.querySelector('#addStudentModal button[type="submit"]');
+    submitBtn.textContent = 'Update Student';
+    submitBtn.onclick = function(e) {
+        e.preventDefault();
+        updateStudent(student.phone);
+    };
+    
+    // Open modal
+    document.getElementById('addStudentModal').style.display = 'block';
+}
+
+// ✅ NEW FUNCTION: Update student
+async function updateStudent(originalPhone) {
+    const fullName = document.getElementById('newStudentName').value.trim();
+    const phone = originalPhone; // Use original phone (primary key)
+    const email = document.getElementById('newStudentEmail').value.trim();
+    const roomNumber = document.getElementById('newStudentRoom').value.trim();
+    const roomType = document.getElementById('newStudentRoomType').value;
+    const monthlyRent = parseInt(document.getElementById('newStudentRent').value);
+
+    // Validations
+    if (!fullName || fullName.length < 3) {
+        alert('Please enter a valid name (minimum 3 characters)');
+        return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address');
+        return;
+    }
+
+    if (!roomNumber || roomNumber.length < 2) {
+        alert('Please enter a valid room number');
+        return;
+    }
+
+    if (!roomType) {
+        alert('Please select a room type');
+        return;
+    }
+
+    if (isNaN(monthlyRent) || monthlyRent < 1000) {
+        alert('Please enter a valid monthly rent');
+        return;
+    }
+
+    const studentData = {
+        fullName: fullName,
+        phone: phone,
+        email: email,
+        roomNumber: roomNumber,
+        roomType: roomType,
+        monthlyRent: monthlyRent
+    };
+
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/admin/update-student', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(studentData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeModal('addStudentModal');
+            
+            // Reset modal for future adds
+            document.querySelector('#addStudentModal .modal-header h2').textContent = 'Add New Student';
+            document.querySelector('#addStudentModal button[type="submit"]').textContent = 'Add Student';
+            document.querySelector('#addStudentModal button[type="submit"]').onclick = null;
+            document.getElementById('newStudentPhone').readOnly = false;
+            
+            loadData();
+            alert('✅ Student updated successfully!\n\nRoom: ' + roomNumber + '\nType: ' + roomType);
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Update error:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+       function updatePaymentsTable() {
+    const tbody = document.getElementById('paymentsTable');
+    if (adminData.students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light); padding: 3rem;">No payment data available.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = adminData.students.map(s => {
+        const statusClass = s.paymentStatus === 'paid' ? 'badge-paid' : 'badge-pending';
+     const rent = s.monthlyRent || 0;
+        return `
+        <tr>
+            <td>${escapeHtml(s.fullName)}</td>
+            <td>${escapeHtml(s.phone)}</td>
+            <td>₹${rent.toLocaleString()}</td>  <!-- ✅ FIXED -->
+            <td>15-${new Date().toLocaleString('default', { month: 'long' })}</td>
+            <td><span class="badge ${statusClass}">${escapeHtml(s.paymentStatus)}</span></td>
+            <td>
+                <button class="btn btn-small btn-success" onclick="markAsPaid('${escapeHtml(s.phone)}')">Mark Paid</button>
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+    function updateStudentsList() {
+    const list = document.getElementById('studentsList');
+    
+    if (adminData.students.length === 0) {
+        list.innerHTML = `
+            <p style="color: #94a3b8; text-align: center; padding: 2rem; font-size: 1rem;">
+                📋 No students to select. Add students first.
+            </p>
+        `;
+        return;
+    }
+
+    list.innerHTML = adminData.students.map(s => `
+        <label style="
+            display: flex; 
+            align-items: center; 
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+            border: 1px solid #e2e8f0;
+            font-weight: 500;
+        ">
+            <input 
+                type="checkbox" 
+                class="student-checkbox" 
+                value="${escapeHtml(s.phone)}" 
+                onchange="updateSelectedCount()"
+                style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer; accent-color: #6366f1;"
+            >
+            <span style="flex: 1;">
+                <strong>${escapeHtml(s.fullName)}</strong>
+                <span style="color: #64748b; margin-left: 8px;">(${escapeHtml(s.phone)})</span>
+            </span>
+        </label>
+    `).join('');
+}
+// ✅ ADD THIS NEW FUNCTION
+function updateSelectedCount() {
+    const checked = document.querySelectorAll('.student-checkbox:checked');
+    const countDisplay = document.getElementById('selectedCountDisplay');
+    const countNumber = document.getElementById('selectedCountNumber');
+    
+    if (checked.length > 0) {
+        countDisplay.style.display = 'block';
+        countNumber.textContent = checked.length;
+    } else {
+        countDisplay.style.display = 'none';
+    }
+}
+
+    function showSection(sectionId, event) {
+    event.preventDefault();
+
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    
+
     document.getElementById(sectionId).classList.add('active');
     event.target.classList.add('active');
 
     // Load inquiries when visiting the inquiries section
     if (sectionId === 'inquiries') {
         loadInquiries();
+    }
+    // ✅ ADD THIS: Load current bills
+    if (sectionId === 'current-bills') {
+        loadCurrentBills();
     }
 }
 
@@ -1239,54 +1884,81 @@
             document.getElementById(modalId).style.display = 'none';
         }
 
-        function addStudent(event) {
-            event.preventDefault();
-            
-            const student = {
-                fullName: document.getElementById('newStudentName').value,
-                phone: document.getElementById('newStudentPhone').value,
-                email: document.getElementById('newStudentEmail').value,
-                monthlyRent: document.getElementById('newStudentRent').value
-            };
+      
 
-            // Send to backend
-            fetch(BACKEND_URL + '/admin/add-student', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(student)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    closeModal('addStudentModal');
-                    loadData();
-                    event.target.reset();
-                    alert('Student added successfully!');
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error: ' + error.message);
-                console.error('Error:', error);
-            });
-        }
-
-        function deleteStudent(phone) {
-            if (confirm('Are you sure you want to delete this student?')) {
-                adminData.students = adminData.students.filter(s => s.phone !== phone);
-                updateDashboard();
+       async function deleteStudent(phone) {
+    
+    const student = adminData.students.find(s => s.phone === phone);
+    const studentName = student ? student.fullName : 'this student';
+    
+    if (!confirm(`⚠️ Are you sure you want to delete ${studentName}?\n\nThis will also delete:\n• All payment records\n• All messages\n• Login access\n\nThis action cannot be undone!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/admin/delete-student/' + phone, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
             }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            
+            // Remove from local data
+            adminData.students = adminData.students.filter(s => s.phone !== phone);
+            
+            // Reload data from backend to ensure sync
+            await loadData();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('❌ Delete error:', error);
+        
+        if (error.message.includes('timeout')) {
+            alert('⚠️ Request timeout. Please check your connection and try again.');
+        } else if (error.message.includes('404')) {
+            alert('⚠️ Student not found. The record may have been already deleted.');
+            await loadData(); // Refresh to sync
+        } else {
+            alert('❌ Error deleting student: ' + error.message);
+        }
+    }
+}
 
-        function markAsPaid(phone) {
-            const student = adminData.students.find(s => s.phone === phone);
-            if (student) {
-                student.paymentStatus = 'paid';
-                updateDashboard();
-                alert('Payment marked as paid!');
+        async function markAsPaid(phone) {
+            if (!confirm('Mark this payment as paid?')) return;
+
+            try {
+                const response = await fetchWithTimeout(BACKEND_URL + '/admin/mark-paid', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Payment marked as paid!');
+                    loadData(); // Reload all data from backend
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error marking payment: ' + error.message);
             }
         }
 
@@ -1294,6 +1966,7 @@
             const checkboxes = document.querySelectorAll('.student-checkbox');
             const selectAll = document.getElementById('selectAll');
             checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            updateSelectedCount();
         }
 
         function sendReminder() {
@@ -1309,9 +1982,10 @@
             const selectedPhones = Array.from(checked).map(cb => cb.value);
 
             // Send to backend
-            fetch(BACKEND_URL + '/admin/send-reminder', {
+            fetchWithTimeout(BACKEND_URL + '/admin/send-reminder', {
                 method: 'POST',
                 headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -1320,47 +1994,68 @@
                     messageType: reminderType
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    document.getElementById('reminderMessage').value = '';
-                    document.getElementById('selectAll').checked = false;
-                    updateStudentsList();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error: ' + error.message);
-                console.error('Error:', error);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        document.getElementById('reminderMessage').value = '';
+                        document.getElementById('selectAll').checked = false;
+                        updateStudentsList();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                    console.error('Error:', error);
+                });
         }
+        // ✅ ADD THIS NEW FUNCTION
+function clearReminderForm() {
+    // Uncheck all students
+    document.querySelectorAll('.student-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+    
+    // Reset message to default
+    document.getElementById('reminderMessage').value = 'Dear Student, Your monthly payment of ₹8,000 is due on 15th of this month. Please pay at the earliest.';
+    
+    // Reset type to default
+    document.getElementById('reminderType').value = 'payment';
+    
+    // Update count display
+    updateSelectedCount();
+    
+    alert('✅ Form cleared!');
+}
 
         function searchStudents() {
             const searchText = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = adminData.students.filter(s => 
-                s.fullName.toLowerCase().includes(searchText) || 
+            const filtered = adminData.students.filter(s =>
+                s.fullName.toLowerCase().includes(searchText) ||
                 s.phone.includes(searchText)
             );
 
             const tbody = document.getElementById('studentsTable');
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light); padding: 3rem;">No students found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-light); padding: 3rem;">No students found.</td></tr>';
                 return;
             }
-
-            tbody.innerHTML = filtered.map(s => `
-                <tr>
-                    <td>${s.fullName}</td>
-                    <td>${s.phone}</td>
-                    <td>${s.email || 'N/A'}</td>
-                    <td>${s.college || 'N/A'}</td>
-                    <td>
-                        <button class="btn btn-small btn-danger" onclick="deleteStudent('${s.phone}')">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
+tbody.innerHTML = filtered.map(s => `
+    <tr>
+        <td><input type="checkbox"></td>
+        <td>${escapeHtml(s.fullName)}</td>
+        <td>${escapeHtml(s.phone)}</td>
+        <td>${escapeHtml(s.email || 'N/A')}</td>
+        <td>${escapeHtml(s.roomNumber || 'Not Assigned')}</td>
+        <td>${escapeHtml(s.roomType || 'N/A')}</td>
+        <td>₹${(s.monthlyRent || 0).toLocaleString()}</td>
+        <td>${escapeHtml(s.college || 'N/A')}</td>
+        <td>
+            <button class="btn btn-small btn-success" onclick='editStudent(${JSON.stringify(s).replace(/'/g, "&apos;")})' style="margin-right:5px;">Edit</button>
+            <button class="btn btn-small btn-danger" onclick="deleteStudent('${escapeHtml(s.phone)}')">Delete</button>
+        </td>
+    </tr>
+`).join('');
         }
 
         function filterPayments() {
@@ -1379,8 +2074,8 @@
                     <tr>
                         <td>${s.fullName}</td>
                         <td>${s.phone}</td>
-                        <td>₹8,000</td>
-                        <td>15-${new Date().toLocaleString('default', {month: 'long'})}</td>
+            <td>₹${(s.monthlyRent || 0).toLocaleString()}</td>
+                        <td>15-${new Date().toLocaleString('default', { month: 'long' })}</td>
                         <td><span class="badge ${statusClass}">${s.paymentStatus}</span></td>
                         <td>
                             <button class="btn btn-small btn-success" onclick="markAsPaid('${s.phone}')">Mark Paid</button>
@@ -1395,12 +2090,12 @@
                 localStorage.removeItem('adminToken');
                 localStorage.removeItem('adminEmail');
                 alert('Logged out successfully!');
-                window.location.href = 'admin-login.html';
+                window.location.href = 'auth.html';
             }
         }
 
         // Close modal when clicking outside
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             const modal = document.getElementById('addStudentModal');
             if (event.target == modal) {
                 modal.style.display = 'none';
@@ -1408,55 +2103,151 @@
         }
         // ==================== LOAD INQUIRIES ====================
 
-async function loadInquiries() {
-    const tbody = document.getElementById('inquiriesTable');
-  tbody.innerHTML = `
+        async function loadInquiries() {
+            const tbody = document.getElementById('inquiriesTable');
+            tbody.innerHTML = `
     <tr>
       <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
         Loading inquiries...
       </td>
     </tr>
   `;
-  try {
-    const response = await fetch(BACKEND_URL + '/inquiries');
-    const data = await response.json();
+            try {
+                const response = await fetchWithTimeout(BACKEND_URL + '/inquiries', {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
 
-    const tbody = document.getElementById('inquiriesTable');
+                const tbody = document.getElementById('inquiriesTable');
 
-    if (data.success && data.inquiries.length > 0) {
-      tbody.innerHTML = data.inquiries.map(inq => `
-        <tr>
-          <td>${inq.id}</td>
-          <td>${inq.name}</td>
-          <td>${inq.email}</td>
-          <td>${inq.phone}</td>
-          <td>${inq.room}</td>
-          <td>${inq.message}</td>
-          <td>${inq.date}</td>
-        </tr>
-      `).join('');
-    } else {
-      tbody.innerHTML = `
+                if (data.success && data.inquiries.length > 0) {
+                    tbody.innerHTML = data.inquiries.map(inq => `
+    <tr>
+        <td>${escapeHtml(inq.id)}</td>
+        <td>${escapeHtml(inq.name)}</td>
+        <td>${escapeHtml(inq.email)}</td>
+        <td>${escapeHtml(inq.phone)}</td>
+        <td>${escapeHtml(inq.room)}</td>
+        <td>${escapeHtml(inq.message)}</td>
+        <td>${escapeHtml(inq.date)}</td>
+    </tr>
+`).join('');
+                } else {
+                    tbody.innerHTML = `
         <tr>
           <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
             No inquiries found.
           </td>
         </tr>
       `;
-    }
-  } catch (err) {
-    console.error('Error loading inquiries:', err);
-    document.getElementById('inquiriesTable').innerHTML = `
+                }
+            } catch (err) {
+                console.error('Error loading inquiries:', err);
+                document.getElementById('inquiriesTable').innerHTML = `
       <tr>
         <td colspan="7" style="text-align:center; color:var(--danger-color); padding:2rem;">
           Error loading inquiries.
         </td>
       </tr>
     `;
-  }
+            }
+        }
+        async function loadCurrentBills() {
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/current-bills/pending');
+        const data = await response.json();
+        
+        const tbody = document.getElementById('currentBillsTable');
+        
+        if (data.success && data.bills.length > 0) {
+            tbody.innerHTML = data.bills.map(bill => `
+                <tr>
+                    <td>${escapeHtml(bill.studentName)}</td>
+                    <td>${escapeHtml(bill.phone)}</td>
+                    <td>₹${bill.amount}</td>
+                    <td>${escapeHtml(bill.month)}</td>
+                    <td>${escapeHtml(bill.paymentDate)}</td>
+                    <td><a href="#" onclick="viewPaymentProof('${escapeHtml(bill.paymentProof)}')">View Proof</a></td>
+                    <td>
+                        <button class="btn btn-small btn-success" onclick="verifyPayment('${escapeHtml(bill.phone)}', '${escapeHtml(bill.month)}', true)">Approve</button>
+                        <button class="btn btn-small btn-danger" onclick="verifyPayment('${escapeHtml(bill.phone)}', '${escapeHtml(bill.month)}', false)">Reject</button>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">No pending verifications</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading current bills:', error);
+    }
 }
 
-    </script>
+function viewPaymentProof(base64Image) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 10px; max-width: 90%; max-height: 90%; overflow: auto;">
+            <button onclick="this.parentElement.parentElement.remove()" style="float: right; background: #ef4444; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">Close</button>
+            <h3>Payment Proof</h3>
+            <img src="${base64Image}" style="max-width: 100%; margin-top: 20px;">
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function verifyPayment(phone, month, approve) {
+    const action = approve ? 'approve' : 'reject';
+    if (!confirm(`${action.toUpperCase()} this payment?`)) return;
+    
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/current-bill/verify/' + phone + '/' + month, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ approve: approve })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            loadCurrentBills();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+function exportToExcel() {
+    const data = adminData.students.map(s => ({
+        Name: s.fullName,
+        Phone: s.phone,
+        Email: s.email,
+        Room: s.roomNumber,
+        Rent: s.monthlyRent,
+        Status: s.paymentStatus
+    }));
+    
+    // Convert to CSV
+    const csv = [
+        Object.keys(data[0]).join(','),
+        ...data.map(row => Object.values(row).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `students_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+}
+  </script>
 </body>
 </html>
-```

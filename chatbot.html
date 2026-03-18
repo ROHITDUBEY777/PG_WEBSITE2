@@ -3,449 +3,1870 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR PG Chatbot</title>
+    <meta name="description" content="AR PG AI Assistant - Get instant answers about accommodation, rooms, facilities, and booking">
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- Security -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <title>AR PG - AI Assistant | Ask Me Anything</title>
+    
+    <link rel="icon" type="image/png" href="image.png">
+    
     <style>
+        /* ========== CSS RESET & VARIABLES ========== */
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #a29bfe;
+            --neon-cyan: #0ff;
+            --neon-green: #0f0;
+            --dark-bg: #0a0a0f;
+            --card-bg: rgba(15, 15, 25, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --success: #27ae60;
+            --error: #e74c3c;
+            --warning: #f39c12;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            overflow: hidden;
         }
 
-        .chatbot-widget {
+        /* ========== ANIMATED BACKGROUND ========== */
+        .bg-container {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            font-family: inherit;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
         }
 
-        .chatbot-button {
-            width: 60px;
-            height: 60px;
+        /* Grid Pattern */
+        .bg-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(90deg, rgba(102, 126, 234, 0.08) 1px, transparent 1px),
+                linear-gradient(rgba(102, 126, 234, 0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Gradient Orbs */
+        .bg-orb {
+            position: absolute;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            cursor: pointer;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: orbFloat 15s ease-in-out infinite;
+        }
+
+        .bg-orb:nth-child(1) {
+            width: 400px;
+            height: 400px;
+            background: var(--primary);
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        .bg-orb:nth-child(2) {
+            width: 300px;
+            height: 300px;
+            background: var(--secondary);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: 5s;
+        }
+
+        .bg-orb:nth-child(3) {
+            width: 250px;
+            height: 250px;
+            background: var(--accent);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: 10s;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(20px, 10px) scale(1.05); }
+        }
+
+        /* Scan Line */
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), transparent);
+            animation: scanLine 4s linear infinite;
+            opacity: 0.6;
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        @keyframes scanLine {
+            0% { top: -10px; opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* ========== MAIN CONTAINER ========== */
+        .chat-container {
+            position: relative;
+            z-index: 1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        /* ========== HEADER ========== */
+        .chat-header {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.4);
+            color: var(--accent);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transition: all 0.3s ease;
-        }
-
-        .chatbot-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-        }
-
-        .chatbot-button.active {
-            display: none;
-        }
-
-        .chatbot-container {
-            display: none;
-            position: absolute;
-            bottom: 80px;
-            right: 0;
-            width: 380px;
-            height: 600px;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 5px 40px rgba(0, 0, 0, 0.16);
-            overflow: hidden;
-            animation: slideUp 0.3s ease;
-        }
-
-        .chatbot-container.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .chatbot-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chatbot-header h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 24px;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s;
+            text-decoration: none;
+            font-size: 1.2rem;
         }
 
-        .close-btn:hover {
-            transform: scale(1.2);
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
         }
 
-        .chatbot-messages {
+        .bot-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            position: relative;
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .bot-avatar::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--primary);
+            border-right-color: var(--secondary);
+            animation: avatarSpin 3s linear infinite;
+        }
+
+        @keyframes avatarSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        .bot-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        .bot-info h1 {
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .bot-info p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .header-right {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.1rem;
+        }
+
+        .header-btn:hover {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* ========== CHAT MESSAGES AREA ========== */
+        .chat-messages {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
+            scroll-behavior: smooth;
         }
 
+        /* Custom Scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+        }
+
+        /* Message Bubbles */
         .message {
             display: flex;
-            margin-bottom: 8px;
-            animation: messageAppear 0.3s ease;
+            gap: 12px;
+            max-width: 85%;
+            animation: messageSlide 0.3s ease;
         }
 
-        @keyframes messageAppear {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.bot {
+            align-self: flex-start;
         }
 
         .message.user {
-            justify-content: flex-end;
+            align-self: flex-end;
+            flex-direction: row-reverse;
         }
 
-        .message-content {
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            line-height: 1.4;
-            word-wrap: break-word;
-        }
-
-        .message.bot .message-content {
-            background: #f0f0f0;
-            color: #333;
-            border-radius: 12px 12px 12px 0;
-        }
-
-        .message.user .message-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px 12px 0 12px;
-        }
-
-        .chatbot-input {
-            padding: 16px;
-            border-top: 1px solid #eee;
-            display: flex;
-            gap: 10px;
-        }
-
-        .chatbot-input input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            font-size: 0.95rem;
-            font-family: inherit;
-            transition: all 0.3s;
-        }
-
-        .chatbot-input input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .send-btn {
-            width: 40px;
-            height: 40px;
-            border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .message-avatar {
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            flex-shrink: 0;
+            font-size: 1.2rem;
+        }
+
+        .message.bot .message-avatar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message-bubble {
+            padding: 15px 20px;
+            border-radius: 20px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .message.bot .message-bubble {
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-top-left-radius: 5px;
+            color: var(--text-primary);
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-top-right-radius: 5px;
+            color: white;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            padding: 0 5px;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 15px 20px;
+            align-items: center;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        /* ========== QUICK ACTIONS ========== */
+        .quick-actions {
+            padding: 15px 20px;
+            border-top: 1px solid rgba(102, 126, 234, 0.2);
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .quick-actions-title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .quick-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quick-btn {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: var(--accent);
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-btn:hover {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .quick-btn:active {
+            transform: translateY(0);
+        }
+
+        .quick-btn.highlight {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
+            border-color: var(--primary);
+        }
+
+        /* ========== CATEGORY TABS ========== */
+        .category-tabs {
+            display: flex;
+            gap: 10px;
+            padding: 10px 20px;
+            overflow-x: auto;
+            background: rgba(10, 10, 15, 0.6);
+            border-top: 1px solid rgba(102, 126, 234, 0.15);
+        }
+
+        .category-tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .category-tabs::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .category-tab {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .category-tab:hover,
+        .category-tab.active {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: var(--primary);
+            color: var(--accent);
+        }
+
+        .category-tab.active {
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* ========== INPUT AREA ========== */
+        .chat-input-area {
+            padding: 15px 20px 20px;
+            background: linear-gradient(180deg, rgba(10, 10, 15, 0.8), rgba(15, 15, 25, 0.95));
+            border-top: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .chat-input {
+            width: 100%;
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 25px;
+            padding: 15px 50px 15px 20px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            resize: none;
+            max-height: 120px;
             transition: all 0.3s;
         }
 
+        .chat-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.15);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .emoji-btn {
+            position: absolute;
+            right: 15px;
+            bottom: 12px;
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: all 0.3s;
+        }
+
+        .emoji-btn:hover {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        .send-btn {
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 25px rgba(102, 126, 234, 0.4);
+        }
+
         .send-btn:hover {
-            transform: scale(1.05);
+            transform: scale(1.1);
+            box-shadow: 0 8px 35px rgba(102, 126, 234, 0.6);
         }
 
         .send-btn:active {
             transform: scale(0.95);
         }
 
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ========== SUGGESTIONS IN MESSAGES ========== */
         .suggestions {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            padding: 0 16px 16px;
+            margin-top: 12px;
         }
 
         .suggestion-btn {
-            padding: 8px 12px;
-            background: #f0f0f0;
-            border: 1px solid #ddd;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.4);
+            color: var(--accent);
+            padding: 8px 16px;
             border-radius: 20px;
-            cursor: pointer;
             font-size: 0.85rem;
+            cursor: pointer;
             transition: all 0.3s;
-            color: #333;
         }
 
         .suggestion-btn:hover {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.35);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
         }
 
-        .typing-indicator {
+        /* ========== INFO CARDS IN MESSAGES ========== */
+        .info-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .info-card h3 {
+            color: var(--accent);
+            font-size: 1.1rem;
+            margin-bottom: 15px;
             display: flex;
-            gap: 4px;
             align-items: center;
-            padding: 12px 16px;
+            gap: 10px;
         }
 
-        .typing-dot {
-            width: 8px;
-            height: 8px;
+        .info-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .info-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s;
+        }
+
+        .info-item:hover {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .info-item .icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .info-item .label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .info-item .value {
+            font-size: 1rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Room Cards */
+        .room-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .room-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .room-card:hover {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateX(5px);
+        }
+
+        .room-card-info h4 {
+            color: var(--text-primary);
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .room-card-info p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .room-card-price {
+            text-align: right;
+        }
+
+        .room-card-price .price {
+            color: var(--accent);
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .room-card-price .period {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .action-btn.secondary {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--accent);
+        }
+
+        .action-btn.secondary:hover {
+            background: rgba(102, 126, 234, 0.15);
+        }
+
+        /* ========== WELCOME MESSAGE ========== */
+        .welcome-section {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .welcome-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: welcomeBounce 2s ease infinite;
+        }
+
+        @keyframes welcomeBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .welcome-section h2 {
+            font-size: 1.6rem;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .welcome-section p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 25px;
+        }
+
+        /* ========== FAQ ACCORDION ========== */
+        .faq-list {
+            margin-top: 15px;
+        }
+
+        .faq-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .faq-question:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .faq-question .icon {
+            transition: transform 0.3s;
+        }
+
+        .faq-item.open .faq-question .icon {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .faq-item.open .faq-answer {
+            max-height: 200px;
+        }
+
+        .faq-answer-content {
+            padding: 0 15px 15px;
+            border-top: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        /* ========== MOBILE RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .chat-header {
+                padding: 12px 15px;
+            }
+
+            .bot-avatar {
+                width: 45px;
+                height: 45px;
+                font-size: 1.5rem;
+            }
+
+            .bot-info h1 {
+                font-size: 1rem;
+            }
+
+            .header-right {
+                gap: 5px;
+            }
+
+            .header-btn {
+                width: 36px;
+                height: 36px;
+            }
+
+            .chat-messages {
+                padding: 15px;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .message-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+
+            .message-bubble {
+                padding: 12px 16px;
+            }
+
+            .quick-actions {
+                padding: 12px 15px;
+            }
+
+            .quick-btn {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }
+
+            .category-tabs {
+                padding: 8px 15px;
+            }
+
+            .chat-input-area {
+                padding: 12px 15px 15px;
+            }
+
+            .chat-input {
+                padding: 12px 45px 12px 15px;
+            }
+
+            .send-btn {
+                width: 50px;
+                height: 50px;
+            }
+
+            .info-card-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .quick-buttons {
+                flex-direction: column;
+            }
+
+            .quick-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* ========== LOADING OVERLAY ========== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loading-bot {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             border-radius: 50%;
-            background: #999;
-            animation: typing 1.4s infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin-bottom: 20px;
+            animation: loadingPulse 1.5s ease infinite;
         }
 
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
+        @keyframes loadingPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(102, 126, 234, 0.5); }
+            50% { transform: scale(1.1); box-shadow: 0 0 50px rgba(102, 126, 234, 0.8); }
         }
 
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
+        .loading-text {
+            color: var(--accent);
+            font-size: 1.1rem;
+            animation: loadingFade 1.5s ease infinite;
         }
 
-        @keyframes typing {
-            0%, 60%, 100% {
-                opacity: 0.3;
-            }
-            30% {
-                opacity: 1;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .chatbot-container {
-                width: calc(100vw - 40px);
-                height: 500px;
-            }
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+        @keyframes loadingFade {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
         }
     </style>
 </head>
 <body>
-    <div class="chatbot-widget">
-        <button class="chatbot-button" onclick="toggleChat()">💬</button>
-        
-        <div class="chatbot-container">
-            <div class="chatbot-header">
-                <h3>AR PG Support</h3>
-                <button class="close-btn" onclick="toggleChat()">✕</button>
-            </div>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-bot">🤖</div>
+        <p class="loading-text">Initializing AI Assistant...</p>
+    </div>
 
-            <div class="chatbot-messages" id="messagesContainer">
-                <div class="message bot">
-                    <div class="message-content">
-                        Hi! I'm AR PG Assistant. How can I help you today?
+    <!-- Animated Background -->
+    <div class="bg-container">
+        <div class="bg-grid"></div>
+        <div class="bg-orb"></div>
+        <div class="bg-orb"></div>
+        <div class="bg-orb"></div>
+        <div class="scan-line"></div>
+    </div>
+
+    <!-- Main Chat Container -->
+    <div class="chat-container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-left">
+                <a href="index.html" class="back-btn" title="Back to Home">←</a>
+                <div class="bot-avatar">🤖</div>
+                <div class="bot-info">
+                    <h1>AR PG Assistant</h1>
+                    <div class="bot-status">
+                        <span class="status-dot"></span>
+                        <p>Online • Ready to help</p>
                     </div>
                 </div>
             </div>
-
-            <div class="suggestions" id="suggestionsContainer">
-                <button class="suggestion-btn" onclick="sendMessage('How to pay rent?')">💳 Pay Rent</button>
-                <button class="suggestion-btn" onclick="sendMessage('What are the facilities?')">🏠 Facilities</button>
-                <button class="suggestion-btn" onclick="sendMessage('Forgot password')">🔐 Password Help</button>
-                <button class="suggestion-btn" onclick="sendMessage('Contact support')">📞 Contact</button>
+            <div class="header-right">
+                <button class="header-btn" onclick="clearChat()" title="Clear Chat">🗑️</button>
+                <button class="header-btn" onclick="toggleSound()" id="soundBtn" title="Toggle Sound">🔊</button>
             </div>
+        </header>
 
-            <div class="chatbot-input">
-                <input type="text" id="userInput" placeholder="Type your message..." onkeypress="handleEnter(event)">
-                <button class="send-btn" onclick="sendUserMessage()">➤</button>
+        <!-- Category Tabs -->
+        <div class="category-tabs" id="categoryTabs">
+            <button class="category-tab active" data-category="all">🏠 All</button>
+            <button class="category-tab" data-category="rooms">🛏️ Rooms</button>
+            <button class="category-tab" data-category="facilities">⚡ Facilities</button>
+            <button class="category-tab" data-category="pricing">💰 Pricing</button>
+            <button class="category-tab" data-category="food">🍽️ Food</button>
+            <button class="category-tab" data-category="location">📍 Location</button>
+            <button class="category-tab" data-category="booking">📝 Booking</button>
+            <button class="category-tab" data-category="rules">📋 Rules</button>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Welcome Message -->
+            <div class="welcome-section" id="welcomeSection">
+                <div class="welcome-icon">👋</div>
+                <h2>Welcome to AR PG!</h2>
+                <p>I'm your AI assistant. Ask me anything about rooms, facilities, pricing, or booking!</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="quick-actions-title">Quick Questions</div>
+            <div class="quick-buttons" id="quickButtons">
+                <button class="quick-btn highlight" onclick="sendQuickMessage('What rooms are available?')">
+                    🛏️ Available Rooms
+                </button>
+                <button class="quick-btn" onclick="sendQuickMessage('What is the rent?')">
+                    💰 Rent & Pricing
+                </button>
+                <button class="quick-btn" onclick="sendQuickMessage('What facilities do you provide?')">
+                    ⚡ Facilities
+                </button>
+                <button class="quick-btn" onclick="sendQuickMessage('How can I book a room?')">
+                    📝 How to Book
+                </button>
+                <button class="quick-btn" onclick="sendQuickMessage('Where is AR PG located?')">
+                    📍 Location
+                </button>
+                <button class="quick-btn" onclick="sendQuickMessage('Tell me about food and mess')">
+                    🍽️ Food & Mess
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <div class="input-container">
+                    <textarea 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Type your question here..." 
+                        rows="1"
+                        maxlength="500"
+                    ></textarea>
+                    <button class="emoji-btn" onclick="addEmoji()">😊</button>
+                </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send Message">
+                    ➤
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        const faqData = {
-            "how to pay rent": {
-                response: "To pay rent:\n1. Login to your dashboard\n2. Click 'Pay Rent Now'\n3. Enter amount\n4. Choose payment method\n5. Complete payment\n\nYou'll get confirmation via email!",
-                keywords: ["pay", "rent", "payment", "bill"]
+        // ========== CONFIGURATION ==========
+        const CONFIG = {
+            botName: 'AR PG Assistant',
+            typingDelay: 1500,
+            soundEnabled: true,
+            pgPhone: '+91-9738225350',
+            pgEmail: 'ravishankargowda88@gmail.com',
+            pgAddress: 'AR PG And Accommodation, No. 25, 2nd Cross, opp Acharya Institute of Technology, Tammenalli, Bangalore - 560107'
+        };
+
+        // ========== KNOWLEDGE BASE ==========
+        const knowledgeBase = {
+            // Greetings
+            greetings: {
+                patterns: ['hi', 'hello', 'hey', 'good morning', 'good evening', 'good afternoon', 'namaste', 'hii', 'hiii', 'hyy', 'heyy'],
+                response: `Hello! 👋 Welcome to AR PG! I'm here to help you with any questions about our premium student accommodation.
+
+What would you like to know about?`,
+                suggestions: ['Available Rooms', 'Pricing', 'Facilities', 'Location']
             },
-            "what are the facilities": {
-                response: "Our facilities include:\n✓ WiFi & High-speed internet\n✓ AC Rooms\n✓ Mess facility\n✓ 24/7 Security\n✓ Study room\n✓ Laundry service\n✓ Gaming lounge",
-                keywords: ["facility", "facilities", "amenities", "what do you have"]
+
+            // Rooms
+            rooms: {
+                patterns: ['room', 'rooms', 'accommodation', 'bed', 'beds', 'single', 'sharing', 'double', 'triple', 'available', 'vacancy', 'vacant'],
+                response: `🏠 **Room Options at AR PG:**`,
+                showRoomCards: true,
+                rooms: [
+                    { name: 'Single Room', desc: 'Private room with attached bathroom', price: '₹8,000', features: 'Fan, WiFi, Bed, Study Table' },
+                    { name: '2-Bed Shared', desc: 'Comfortable room for 2 students', price: '₹7,500', features: 'Fan, WiFi, 2 Beds, Study Tables' },
+                    { name: '3-Bed Shared', desc: 'Budget-friendly for 3 students', price: '₹6,500', features: 'Fan, WiFi, 3 Beds, Study Tables' }
+                ],
+                suggestions: ['Book Now', 'Room Features', 'Visit PG']
             },
-            "forgot password": {
-                response: "To reset your password:\n1. Go to Login page\n2. Click 'Forgot Password?'\n3. Enter your phone number\n4. Check email for reset code\n5. Enter code and set new password\n\nNeed more help? Contact support.",
-                keywords: ["forgot", "password", "reset", "can't login", "login issue"]
+
+            // Pricing
+            pricing: {
+                patterns: ['price', 'pricing', 'rent', 'cost', 'fee', 'fees', 'charges', 'money', 'pay', 'payment', 'how much', 'rate', 'rates', 'monthly'],
+                response: `💰 **AR PG Pricing (All-Inclusive):**
+
+📌 **Single Room:** ₹8,000/month
+📌 **2-Bed Sharing:** ₹7,500/month per person
+📌 **3-Bed Sharing:** ₹6,500/month per person
+
+✅ **Included in Rent:**
+• 3 Meals/day (Breakfast, Lunch, Dinner)
+• High-speed WiFi
+• Electricity & Water
+• Laundry Service (Weekly)
+• 24/7 Hot Water
+• Room Cleaning
+
+💳 **Payment Options:**
+• UPI / Google Pay / PhonePe
+• Bank Transfer (NEFT/IMPS)
+• Cash
+
+🔒 **Security Deposit:** 2 months rent (Refundable)`,
+                suggestions: ['Book Now', 'Payment Details', 'Room Options']
             },
-            "contact support": {
-                response: "You can reach us:\n📞 Phone: +91 98765 43210\n📧 Email: support@arpg.com\n💬 Chat: Available 24/7\n\nWe'll respond within 2 hours!",
-                keywords: ["contact", "support", "help", "call", "email", "reach"]
+
+            // Facilities
+            facilities: {
+                patterns: ['facility', 'facilities', 'amenities', 'features', 'provide', 'offer', 'included', 'wifi', 'internet', 'laundry', 'washing', 'water', 'heater', 'hot water', 'security', 'cctv'],
+                response: `⚡ **AR PG Facilities:**`,
+                showFacilitiesCard: true,
+                facilities: [
+                    { icon: '📶', label: 'WiFi', value: '100 Mbps' },
+                    { icon: '🍽️', label: 'Meals', value: '3/day' },
+                    { icon: '🔒', label: 'Security', value: '24/7 CCTV' },
+                    { icon: '🧺', label: 'Laundry', value: 'Weekly' },
+                    { icon: '♨️', label: 'Hot Water', value: '24/7' },
+                    { icon: '💧', label: 'Purified Water', value: '24/7' },
+                    { icon: '📚', label: 'Study Table', value: 'In Room' },
+                    { icon: '🌀', label: 'Ceiling Fan', value: 'All Rooms' }
+                ],
+                suggestions: ['Room Options', 'Food Menu', 'Location']
             },
-            "room types": {
-                response: "We offer 3 room types:\n\n🛏️ Single Room - ₹8,000/month\n• Private room with bathroom\n\n🛏️🛏️ 2-Bed Shared - ₹5,000/month\n• Shared room for 2\n\n🛏️🛏️🛏️ 3-Bed Shared - ₹3,500/month\n• Shared room for 3",
-                keywords: ["room", "rooms", "single", "shared", "price", "cost"]
+
+            // Food
+            food: {
+                patterns: ['food', 'mess', 'meal', 'meals', 'breakfast', 'lunch', 'dinner', 'eat', 'eating', 'kitchen', 'cook', 'veg', 'non-veg', 'nonveg', 'menu', 'tiffin'],
+                response: `🍽️ **Food & Mess Facility:**
+
+**Meal Timings:**
+🌅 Breakfast: 7:30 AM - 9:00 AM
+🌞 Lunch: 12:30 PM - 2:00 PM
+🌙 Dinner: 7:30 PM - 9:00 PM
+
+**Menu Highlights:**
+• South Indian & North Indian cuisine
+• Fresh, hygienic, home-style cooking
+• Variety changes daily
+• Special weekend menu
+
+**Diet Options:**
+🥗 Pure Vegetarian meals
+⚡ No outside food needed
+
+**Special Features:**
+• Purified drinking water 24/7
+• Hot water for tea/coffee available
+• Clean dining area
+
+💡 *We understand student taste - food just like home!*`,
+                suggestions: ['See Pricing', 'Room Options', 'Other Facilities']
             },
-            "how to book": {
-                response: "To book a room:\n1. Go to homepage\n2. Click 'Book Your Room Now'\n3. Sign up with your details\n4. Complete payment\n5. Get confirmation\n\nYour room will be ready!",
-                keywords: ["book", "booking", "reserve", "how to join", "sign up"]
+
+            // Location
+            location: {
+                patterns: ['location', 'address', 'where', 'located', 'place', 'area', 'near', 'nearby', 'direction', 'map', 'reach', 'distance', 'acharya', 'college', 'soladevanahalli', 'tammenalli'],
+                response: `📍 **AR PG Location:**
+
+**Address:**
+${CONFIG.pgAddress}
+
+**Nearby Landmarks:**
+🏫 Acharya Institute of Technology - 2 mins walk
+🏫 Acharya College - 5 mins walk
+🚌 Bus Stop - 3 mins walk
+🏪 Shops & ATM - 2 mins walk
+🏥 Hospital - 5 mins
+
+**How to Reach:**
+🚌 Bus: Get down at Acharya College stop
+🚖 Auto/Cab: Say "Acharya Institute back gate"
+
+📞 Call us for directions: ${CONFIG.pgPhone}`,
+                showMapButton: true,
+                suggestions: ['Book Visit', 'Call Us', 'Room Options']
             },
-            "default": {
-                response: "I'm here to help! You can ask me about:\n• Payment & Rent\n• Room types & booking\n• Facilities\n• Password reset\n• Contact support\n\nWhat would you like to know?",
-                keywords: []
+
+            // Booking
+            booking: {
+                patterns: ['book', 'booking', 'reserve', 'register', 'join', 'admission', 'apply', 'enroll', 'how to book', 'procedure', 'process'],
+                response: `📝 **How to Book at AR PG:**
+
+**Step 1: Visit or Call**
+📞 Call: ${CONFIG.pgPhone}
+🏠 Visit: Come see the rooms in person
+
+**Step 2: Choose Your Room**
+• Single Room - ₹8,000/month
+• 2-Bed Shared - ₹7,500/month
+• 3-Bed Shared - ₹6,500/month
+
+**Step 3: Submit Documents**
+📄 Aadhar Card copy
+📄 College ID copy
+📄 2 Passport photos
+📄 Parent contact details
+
+**Step 4: Pay & Move In**
+💳 Pay 1st month rent + Security deposit
+🔑 Get your room keys & move in!
+
+⚡ **Same-day joining available!**`,
+                showBookingButtons: true,
+                suggestions: ['Call Now', 'Visit Website', 'Ask Question']
+            },
+
+            // Security
+            security: {
+                patterns: ['security', 'safe', 'safety', 'secure', 'cctv', 'camera', 'guard', 'lock', 'theft', 'women', 'girl', 'female', 'boys', 'girls only', 'men only'],
+                response: `🔒 **Security at AR PG:**
+
+**24/7 Security Features:**
+📹 CCTV cameras at all entry/exit points
+🚪 Secure main gate with controlled access
+👮 Security personnel on premises
+🔐 Individual room locks provided
+📋 Visitor register maintained
+
+**For Boys Only:**
+👨 AR PG is currently a **Boys PG** only
+(Girls PG not available)
+
+**Entry Timing:**
+🕙 Gate closes at 10:30 PM
+📝 Late entry with prior permission
+
+**Emergency:**
+📞 Owner available 24/7 for emergencies
+🏥 Hospital just 5 mins away
+
+*Your safety is our priority!*`,
+                suggestions: ['Room Options', 'Rules', 'Contact Owner']
+            },
+
+            // Rules
+            rules: {
+                patterns: ['rule', 'rules', 'regulation', 'guidelines', 'timing', 'time', 'curfew', 'visitor', 'guest', 'alcohol', 'smoking', 'pet', 'permission'],
+                response: `📋 **AR PG Rules & Guidelines:**
+
+**Timings:**
+⏰ Gate closes: 10:30 PM
+⏰ Breakfast: 7:30 AM - 9:00 AM
+⏰ Lunch: 12:30 PM - 2:00 PM
+⏰ Dinner: 7:30 PM - 9:00 PM
+
+**General Rules:**
+✅ Maintain cleanliness in room
+✅ Respect other residents
+✅ Inform before late entry
+✅ Keep noise level low after 10 PM
+
+**Not Allowed:**
+❌ Smoking & Alcohol
+❌ Pets
+❌ Loud music after 10 PM
+❌ Unauthorized guests overnight
+
+**Visitors:**
+👥 Allowed till 8 PM only
+📝 Must register at gate
+
+*Rules help us maintain a peaceful environment for all students!*`,
+                suggestions: ['Facilities', 'Booking', 'Contact']
+            },
+
+            // Contact
+            contact: {
+                patterns: ['contact', 'phone', 'call', 'number', 'mobile', 'email', 'whatsapp', 'talk', 'speak', 'owner', 'manager', 'enquiry', 'inquiry'],
+                response: `📞 **Contact AR PG:**
+
+**Phone / WhatsApp:**
+📱 ${CONFIG.pgPhone}
+
+**Email:**
+📧 ${CONFIG.pgEmail}
+
+**Address:**
+📍 ${CONFIG.pgAddress}
+
+**Available:**
+🕐 9:00 AM - 9:00 PM (All days)
+🆘 Emergency: 24/7
+
+**Quick Actions:**`,
+                showContactButtons: true,
+                suggestions: ['Book Room', 'Visit PG', 'Ask Question']
+            },
+
+            // WiFi
+            wifi: {
+                patterns: ['wifi', 'internet', 'network', 'speed', 'mbps', 'connection', 'online', 'streaming'],
+                response: `📶 **WiFi & Internet at AR PG:**
+
+**Speed:** 100 Mbps Fiber Connection
+**Availability:** 24/7 in all rooms
+**Coverage:** Entire building
+
+**Perfect For:**
+✅ Online classes
+✅ Video streaming
+✅ Gaming
+✅ Video calls
+✅ Downloading
+
+**Devices:** Connect multiple devices
+**Support:** Technical help available
+
+*Never miss an online class!*`,
+                suggestions: ['Other Facilities', 'Room Options', 'Pricing']
+            },
+
+            // Payment
+            payment: {
+                patterns: ['payment', 'pay', 'upi', 'gpay', 'phonepe', 'paytm', 'bank', 'transfer', 'deposit', 'advance', 'installment'],
+                response: `💳 **Payment Information:**
+
+**Rent Payment:**
+📅 Due: 1st - 5th of every month
+⚠️ Late fee: ₹100/day after 10th
+
+**Payment Methods:**
+• UPI (GPay, PhonePe, Paytm)
+• Bank Transfer (NEFT/IMPS)
+• Cash (Receipt provided)
+
+**Security Deposit:**
+💰 2 months rent (Refundable)
+📝 Refunded within 15 days of checkout
+
+**First Payment:**
+= 1st month rent + Security deposit
+
+📱 For payment link, contact:
+${CONFIG.pgPhone}`,
+                suggestions: ['Book Now', 'Room Options', 'Contact']
+            },
+
+            // Thanks
+            thanks: {
+                patterns: ['thank', 'thanks', 'thank you', 'thankyou', 'thx', 'tq', 'great', 'awesome', 'helpful', 'nice'],
+                response: `You're welcome! 😊
+
+I'm glad I could help you. Is there anything else you'd like to know about AR PG?
+
+Feel free to ask about:
+• Room availability
+• Booking process
+• Facilities
+• Or anything else!`,
+                suggestions: ['Book Room', 'More Questions', 'Contact Owner']
+            },
+
+            // Bye
+            bye: {
+                patterns: ['bye', 'goodbye', 'see you', 'later', 'exit', 'close', 'quit'],
+                response: `Goodbye! 👋
+
+Thank you for chatting with AR PG Assistant.
+
+📞 For immediate help: ${CONFIG.pgPhone}
+🏠 Visit us anytime!
+
+*Looking forward to welcoming you as our resident!*`,
+                suggestions: ['Start New Chat', 'Visit Website']
+            },
+
+            // Compare
+            compare: {
+                patterns: ['compare', 'comparison', 'vs', 'versus', 'difference', 'which is better', 'other pg', 'competitor'],
+                response: `📊 **Why Choose AR PG?**
+
+**AR PG Advantages:**
+✅ All-inclusive rent (no hidden charges)
+✅ Home-style food - 3 meals/day
+✅ 100 Mbps WiFi included
+✅ Just 2 mins from Acharya Institute
+✅ 24/7 security & hot water
+✅ Weekly laundry service
+✅ Experienced management (5+ years)
+✅ 100+ happy students
+
+**What Students Say:**
+⭐ 4.8/5 Rating
+💯 98% recommend us
+
+*Come visit and see the difference yourself!*`,
+                suggestions: ['Book Visit', 'See Reviews', 'Room Options']
+            },
+
+            // Default
+            default: {
+                response: `I'm not sure I understood that completely. 🤔
+
+Here are some things I can help you with:
+
+🛏️ **Rooms** - Types, availability, features
+💰 **Pricing** - Rent, deposits, inclusions
+⚡ **Facilities** - WiFi, food, laundry, etc.
+📍 **Location** - Address, directions
+📝 **Booking** - How to join
+📋 **Rules** - Timings, guidelines
+📞 **Contact** - Phone, email
+
+Try asking in a different way, or choose from the options below!`,
+                suggestions: ['Room Options', 'Pricing', 'Facilities', 'Contact']
             }
         };
 
-        function toggleChat() {
-            const container = document.querySelector('.chatbot-container');
-            const button = document.querySelector('.chatbot-button');
-            container.classList.toggle('active');
-        }
+        // ========== STATE ==========
+        let messageHistory = [];
+        let isTyping = false;
+        let soundEnabled = true;
 
-        function sendUserMessage() {
-            const input = document.getElementById('userInput');
-            const message = input.value.trim();
-            
-            if (message) {
-                sendMessage(message);
-                input.value = '';
-            }
-        }
-
-        function handleEnter(event) {
-            if (event.key === 'Enter') {
-                sendUserMessage();
-            }
-        }
-
-        function sendMessage(message) {
-            // Display user message
-            displayMessage(message, 'user');
-            
-            // Hide suggestions
-            document.getElementById('suggestionsContainer').style.display = 'none';
-            
-            // Show typing indicator
-            showTypingIndicator();
-            
-            // Get bot response
+        // ========== INITIALIZATION ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            // Hide loading after delay
             setTimeout(() => {
-                const response = getBotResponse(message);
-                removeTypingIndicator();
-                displayMessage(response, 'bot');
-            }, 800);
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                showWelcomeMessage();
+            }, 1500);
+
+            // Setup event listeners
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+
+            // Enter to send
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Auto-resize textarea
+            chatInput.addEventListener('input', () => {
+                chatInput.style.height = 'auto';
+                chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+            });
+
+            // Category tabs
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.addEventListener('click', () => handleCategoryClick(tab));
+            });
         }
 
-        function displayMessage(text, sender) {
-            const container = document.getElementById('messagesContainer');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}`;
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.textContent = text;
-            
-            messageDiv.appendChild(contentDiv);
-            container.appendChild(messageDiv);
-            
-            // Scroll to bottom
-            container.scrollTop = container.scrollHeight;
+        // ========== WELCOME MESSAGE ==========
+        function showWelcomeMessage() {
+            setTimeout(() => {
+                const welcomeMsg = `Hello! 👋 Welcome to **AR PG Assistant**!
+
+I can help you with:
+🛏️ Room options & availability
+💰 Pricing & payment
+⚡ Facilities & amenities
+📍 Location & directions
+📝 Booking process
+📋 Rules & timings
+
+**Ask me anything or choose from the quick options below!**`;
+
+                addBotMessage(welcomeMsg, ['Available Rooms', 'Pricing', 'Facilities', 'Location']);
+            }, 500);
+        }
+
+        // ========== MESSAGE HANDLING ==========
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = sanitizeInput(input.value.trim());
+
+            if (!message || isTyping) return;
+
+            // Clear input
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Hide welcome section
+            const welcomeSection = document.getElementById('welcomeSection');
+            if (welcomeSection) welcomeSection.style.display = 'none';
+
+            // Add user message
+            addUserMessage(message);
+
+            // Process and respond
+            processMessage(message);
+        }
+
+        function sendQuickMessage(message) {
+            if (isTyping) return;
+
+            // Hide welcome section
+            const welcomeSection = document.getElementById('welcomeSection');
+            if (welcomeSection) welcomeSection.style.display = 'none';
+
+            addUserMessage(message);
+            processMessage(message);
+        }
+
+        function processMessage(message) {
+            isTyping = true;
+            showTypingIndicator();
+
+            // Find matching response
+            const response = findResponse(message.toLowerCase());
+
+            // Simulate thinking delay
+            setTimeout(() => {
+                hideTypingIndicator();
+                isTyping = false;
+                displayResponse(response);
+            }, CONFIG.typingDelay);
+        }
+
+        function findResponse(message) {
+            // Check each category
+            for (const [key, data] of Object.entries(knowledgeBase)) {
+                if (key === 'default') continue;
+
+                for (const pattern of data.patterns) {
+                    if (message.includes(pattern)) {
+                        return { key, ...data };
+                    }
+                }
+            }
+
+            return { key: 'default', ...knowledgeBase.default };
+        }
+
+        function displayResponse(responseData) {
+            let html = responseData.response;
+
+            // Add room cards if needed
+            if (responseData.showRoomCards && responseData.rooms) {
+                html += '<div class="room-cards">';
+                responseData.rooms.forEach(room => {
+                    html += `
+                        <div class="room-card" onclick="sendQuickMessage('Tell me more about ${room.name}')">
+                            <div class="room-card-info">
+                                <h4>🛏️ ${room.name}</h4>
+                                <p>${room.desc}</p>
+                            </div>
+                            <div class="room-card-price">
+                                <div class="price">${room.price}</div>
+                                <div class="period">/month</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            // Add facilities card if needed
+            if (responseData.showFacilitiesCard && responseData.facilities) {
+                html += `
+                    <div class="info-card">
+                        <h3>⚡ All Facilities Included</h3>
+                        <div class="info-card-grid">
+                `;
+                responseData.facilities.forEach(f => {
+                    html += `
+                        <div class="info-item">
+                            <div class="icon">${f.icon}</div>
+                            <div class="label">${f.label}</div>
+                            <div class="value">${f.value}</div>
+                        </div>
+                    `;
+                });
+                html += '</div></div>';
+            }
+
+            // Add booking buttons if needed
+            if (responseData.showBookingButtons) {
+                html += `
+                    <div class="action-buttons">
+                        <a href="auth.html" class="action-btn primary">📝 Book Now</a>
+                        <a href="tel:${CONFIG.pgPhone}" class="action-btn secondary">📞 Call Us</a>
+                    </div>
+                `;
+            }
+
+            // Add contact buttons if needed
+            if (responseData.showContactButtons) {
+                html += `
+                    <div class="action-buttons">
+                        <a href="tel:${CONFIG.pgPhone}" class="action-btn primary">📞 Call Now</a>
+                        <a href="https://wa.me/919738225350" class="action-btn secondary" target="_blank">💬 WhatsApp</a>
+                    </div>
+                `;
+            }
+
+            // Add map button if needed
+            if (responseData.showMapButton) {
+                html += `
+                    <div class="action-buttons">
+                        <a href="https://maps.google.com/?q=AR+PG+Acharya+Institute+Bangalore" class="action-btn primary" target="_blank">🗺️ Open in Maps</a>
+                        <a href="tel:${CONFIG.pgPhone}" class="action-btn secondary">📞 Get Directions</a>
+                    </div>
+                `;
+            }
+
+            addBotMessage(html, responseData.suggestions);
+        }
+
+        // ========== MESSAGE UI ==========
+        function addUserMessage(text) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const time = getCurrentTime();
+
+            const messageHTML = `
+                <div class="message user">
+                    <div class="message-content">
+                        <div class="message-bubble">${escapeHtml(text)}</div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                    <div class="message-avatar">👤</div>
+                </div>
+            `;
+
+            messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+            scrollToBottom();
+            playSound('send');
+
+            messageHistory.push({ role: 'user', content: text, time });
+        }
+
+        function addBotMessage(text, suggestions = []) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const time = getCurrentTime();
+
+            let suggestionsHTML = '';
+            if (suggestions && suggestions.length > 0) {
+                suggestionsHTML = '<div class="suggestions">';
+                suggestions.forEach(s => {
+                    suggestionsHTML += `<button class="suggestion-btn" onclick="sendQuickMessage('${s}')">${s}</button>`;
+                });
+                suggestionsHTML += '</div>';
+            }
+
+            // Convert markdown-style bold to HTML
+            const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            const messageHTML = `
+                <div class="message bot">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <div class="message-bubble">${formattedText}${suggestionsHTML}</div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                </div>
+            `;
+
+            messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+            scrollToBottom();
+            playSound('receive');
+
+            messageHistory.push({ role: 'bot', content: text, time });
         }
 
         function showTypingIndicator() {
-            const container = document.getElementById('messagesContainer');
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'typing-indicator';
-            typingDiv.id = 'typingIndicator';
+            const messagesContainer = document.getElementById('chatMessages');
             
-            for (let i = 0; i < 3; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'typing-dot';
-                typingDiv.appendChild(dot);
-            }
-            
-            container.appendChild(typingDiv);
-            container.scrollTop = container.scrollHeight;
+            const typingHTML = `
+                <div class="message bot" id="typingIndicator">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            messagesContainer.insertAdjacentHTML('beforeend', typingHTML);
+            scrollToBottom();
         }
 
-        function removeTypingIndicator() {
+        function hideTypingIndicator() {
             const typing = document.getElementById('typingIndicator');
             if (typing) typing.remove();
         }
 
-        function getBotResponse(userMessage) {
-            const lowerMessage = userMessage.toLowerCase();
-            
-            // Check each FAQ
-            for (const [key, value] of Object.entries(faqData)) {
-                if (key === 'default') continue;
-                
-                // Check if keywords match
-                if (value.keywords.some(keyword => lowerMessage.includes(keyword))) {
-                    return value.response;
-                }
-                
-                // Check if key words appear in message
-                if (lowerMessage.includes(key)) {
-                    return value.response;
-                }
+        // ========== CATEGORY HANDLING ==========
+        function handleCategoryClick(tab) {
+            // Update active state
+            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            const category = tab.dataset.category;
+
+            if (category === 'all') {
+                updateQuickButtons('all');
+                return;
             }
-            
-            // Default response
-            return faqData.default.response;
+
+            // Send category question
+            const categoryQuestions = {
+                rooms: 'What rooms are available?',
+                facilities: 'What facilities do you provide?',
+                pricing: 'What is the rent and pricing?',
+                food: 'Tell me about food and mess',
+                location: 'Where is AR PG located?',
+                booking: 'How can I book a room?',
+                rules: 'What are the rules and timings?'
+            };
+
+            if (categoryQuestions[category]) {
+                sendQuickMessage(categoryQuestions[category]);
+            }
         }
+
+        function updateQuickButtons(category) {
+            const container = document.getElementById('quickButtons');
+            
+            const allButtons = `
+                <button class="quick-btn highlight" onclick="sendQuickMessage('What rooms are available?')">🛏️ Available Rooms</button>
+                <button class="quick-btn" onclick="sendQuickMessage('What is the rent?')">💰 Rent & Pricing</button>
+                <button class="quick-btn" onclick="sendQuickMessage('What facilities do you provide?')">⚡ Facilities</button>
+                <button class="quick-btn" onclick="sendQuickMessage('How can I book a room?')">📝 How to Book</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Where is AR PG located?')">📍 Location</button>
+                <button class="quick-btn" onclick="sendQuickMessage('Tell me about food and mess')">🍽️ Food & Mess</button>
+            `;
+
+            container.innerHTML = allButtons;
+        }
+
+        // ========== UTILITY FUNCTIONS ==========
+        function sanitizeInput(str) {
+            if (!str) return '';
+            return str
+                .replace(/[<>]/g, '')
+                .replace(/javascript:/gi, '')
+                .replace(/on\w+=/gi, '')
+                .trim()
+                .substring(0, 500);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getCurrentTime() {
+            return new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chatMessages');
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            // Sound can be implemented with Audio API
+            // For now, just a visual feedback
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('soundBtn');
+            btn.textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        function clearChat() {
+            if (confirm('Clear all messages?')) {
+                const container = document.getElementById('chatMessages');
+                container.innerHTML = `
+                    <div class="welcome-section" id="welcomeSection">
+                        <div class="welcome-icon">👋</div>
+                        <h2>Welcome to AR PG!</h2>
+                        <p>I'm your AI assistant. Ask me anything about rooms, facilities, pricing, or booking!</p>
+                    </div>
+                `;
+                messageHistory = [];
+                showWelcomeMessage();
+            }
+        }
+
+        function addEmoji() {
+            const input = document.getElementById('chatInput');
+            const emojis = ['😊', '👍', '🏠', '📞', '💰', '❓', '🙏', '👋'];
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            input.value += randomEmoji;
+            input.focus();
+        }
+
+        // ========== ERROR HANDLING ==========
+        window.addEventListener('error', (e) => {
+            console.error('Error:', e.error);
+            return true;
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Promise rejection:', e.reason);
+            e.preventDefault();
+        });
+
+        console.log('🤖 AR PG Chatbot Initialized!');
     </script>
 </body>
 </html>

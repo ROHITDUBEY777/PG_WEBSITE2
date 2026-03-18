@@ -1,6 +1,6 @@
 
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import json
@@ -11,7 +11,60 @@ from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from functools import wraps
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+# Razorpay Configuration
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 
+# Initialize Razorpay client
+razorpay_client = None
+if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET:
+    try:
+        import razorpay
+        razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+        print("✅ Razorpay payment gateway enabled!")
+    except Exception as e:
+        print(f"⚠️ Razorpay initialization failed: {str(e)}")
+else:
+    print("⚠️ Razorpay not configured (add credentials to .env)")
+app = Flask(__name__)
+
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+def require_admin(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check for admin token
+        token = request.headers.get('Authorization')
+        if not token or not verify_admin_token(token):
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+def verify_admin_token(token):
+    """Verify JWT token for admin"""
+    try:
+        import base64
+        decoded = base64.b64decode(token).decode()
+        token_data = json.loads(decoded)
+        
+        # Check expiry
+        if datetime.now().timestamp() > token_data.get('exp', 0):
+            return False
+        
+        # Check role
+        return token_data.get('role') == 'admin'
+    except:
+        return False
+
+    
 # Try to import Twilio (optional)
 try:
     from twilio.rest import Client
@@ -22,26 +75,25 @@ except ImportError:
 
 # Load environment variables
 load_dotenv()
+# Add after load_dotenv()
+ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000').split(',')
 
-app = Flask(__name__)
-CORS(app, 
-     origins=["*"],
-     allow_headers=["Content-Type", "Accept"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     supports_credentials=False)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ALLOWED_ORIGINS,  # ✅ Now reads from .env!
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
+JWT_SECRET = os.getenv('JWT_SECRET')
+FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+DEBUG_MODE = FLASK_ENV == 'development'
+if not ADMIN_EMAIL or not ADMIN_PASSWORD or not JWT_SECRET:
+    raise ValueError("❌ CRITICAL: ADMIN_EMAIL, ADMIN_PASSWORD, and JWT_SECRET must be set in .env file!")
 
-
-
-# Enable CORS for all routes with proper configuration
-# CORS(app, resources={
-#     r"/api/*": {
-#         "origins": ["*"],
-#         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-#         "allow_headers": ["Content-Type"],
-#         "supports_credentials": False
-#     }
-# })
 
 # Database setup
 DB_FILE = 'arpg_database.db'
@@ -49,9 +101,9 @@ DB_FILE = 'arpg_database.db'
 # Email configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
-SENDER_EMAIL = os.getenv('SENDER_EMAIL', 'sagarpatil684077@gmail.com')
-SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', 'MSdhoni@77')
-SENDER_NAME = os.getenv('SENDER_NAME', 'sagar')
+SENDER_EMAIL = os.getenv('SENDER_EMAIL')
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
+SENDER_NAME = os.getenv('SENDER_NAME','AR PG')
 
 # SMS configuration (Twilio)
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
@@ -59,9 +111,23 @@ TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
 TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')
 
 # Owner contact (for payment notifications)
-OWNER_PHONE = os.getenv('OWNER_PHONE', '+919110672090')
-OWNER_EMAIL = os.getenv('OWNER_EMAIL', 'spatil77436@gmail.com')
+OWNER_PHONE = os.getenv('OWNER_PHONE')
+OWNER_EMAIL = os.getenv('OWNER_EMAIL')
 OWNER_NAME = os.getenv('OWNER_NAME', 'AR PG Owner')
+
+import secrets
+import string
+
+def generate_random_password(length=12):
+    """Generate secure random password for admin-added students"""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    password = ''.join(secrets.choice(alphabet) for i in range(length))
+    return password
+import hashlib
+
+def hash_password(password):
+    """Hash password using SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Initialize Twilio client
 twilio_client = None
@@ -385,6 +451,18 @@ def init_db():
             date TEXT NOT NULL
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS current_bills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            studentPhone TEXT NOT NULL,
+            amount INTEGER DEFAULT 200,
+            month TEXT NOT NULL,
+            paymentDate TEXT NOT NULL,
+            status TEXT DEFAULT 'paid',
+           paymentProof TEXT,  --
+            FOREIGN KEY (studentPhone) REFERENCES students(phone)
+        )
+    ''')
 
     
     conn.commit()
@@ -410,10 +488,22 @@ def signup():
         if cursor.fetchone():
             return jsonify({'success': False, 'message': 'Phone number already registered!'}), 400
         
-        # Insert new student
+        # ✅ UPDATED: Now includes monthlyRent based on roomType
+        # Determine rent based on room type
+        room_type = data.get('roomType', 'Single')
+        if room_type == 'Single':
+            monthly_rent = 8000
+        elif room_type == '2-Bed':
+            monthly_rent = 7500
+        elif room_type == '3-Bed':
+            monthly_rent = 6500
+        else:
+            monthly_rent = 8000  # Default
+        
+        # ✅ UPDATED: Insert with monthlyRent
         cursor.execute('''
-            INSERT INTO students (fullName, email, phone, college, course, year, roomType, password, registrationDate)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO students (fullName, email, phone, college, course, year, roomType, password, registrationDate, monthlyRent)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data['fullName'],
             data['email'],
@@ -422,10 +512,10 @@ def signup():
             data['course'],
             data['year'],
             data['roomType'],
-            data['password'],
-            datetime.now().strftime('%d-%b-%Y')
+            hash_password(data['password']),
+            datetime.now().strftime('%d-%b-%Y'),
+            monthly_rent  # ✅ NOW SAVING RENT!
         ))
-        
         
         conn.commit()
         conn.close()
@@ -454,7 +544,7 @@ def login():
         cursor.execute('''
             SELECT * FROM students
             WHERE (phone = ? OR email = ?) AND password = ?
-        ''', (identifier, identifier, password))
+        ''', (identifier, identifier, hash_password(password)))
 
         student = cursor.fetchone()
         conn.close()
@@ -582,10 +672,17 @@ def get_student_messages(phone):
     
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+
+
+    # ==================== GET ROOMMATES ENDPOINT ====================
+
+
 
 # ==================== ANNOUNCEMENTS ROUTES ====================
 
 @app.route('/api/announcements', methods=['GET'])
+@limiter.limit("30 per minute")
 def get_announcements():
     """Get all announcements for students"""
     try:
@@ -760,14 +857,18 @@ def update_announcement(announcement_id):
 
 # ==================== ADMIN ROUTES ====================
 
+
+
 @app.route('/api/admin/students', methods=['GET'])
+# @require_admin
 def get_all_students():
     """Get all students (for admin)"""
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
-        cursor.execute('SELECT fullName, email, phone, college, roomNumber, paymentStatus FROM students')
+        # REPLACE WITH:
+        cursor.execute('SELECT fullName, email, phone, college, roomNumber, paymentStatus, monthlyRent, roomType FROM students')
         students = cursor.fetchall()
         conn.close()
         
@@ -780,7 +881,9 @@ def get_all_students():
                     'phone': s[2],
                     'college': s[3],
                     'roomNumber': s[4],
-                    'paymentStatus': s[5]
+                    'paymentStatus': s[5],
+                    'monthlyRent': s[6],   # ← ADD THIS
+                    'roomType': s[7] 
                 }
                 for s in students
             ]
@@ -794,7 +897,7 @@ def admin_add_student():
     """Admin add student"""
     try:
         data = request.json
-        
+        random_password = generate_random_password()
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
@@ -809,7 +912,7 @@ def admin_add_student():
             data.get('course', 'N/A'),
             data.get('year', 'N/A'),
             data.get('roomType', 'Single'),
-            'password123',
+            hash_password(random_password),
             datetime.now().strftime('%d-%b-%Y'),
             data.get('roomNumber'),
             data.get('monthlyRent', 8000)
@@ -817,9 +920,53 @@ def admin_add_student():
         
         conn.commit()
         conn.close()
+        student_name = data['fullName']
+        student_email = data['email']
         
-        return jsonify({'success': True, 'message': 'Student added successfully!'}), 201
-    
+        email_subject = "Welcome to AR PG - Your Account Details"
+        email_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <h2>🏠 Welcome to AR PG!</h2>
+                </div>
+                
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <p>Hello <strong>{student_name}</strong>,</p>
+                    
+                    <p>Your account has been created by the admin. Here are your login details:</p>
+                    
+                    <div style="background: white; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0;">
+                        <p><strong>Email/Phone:</strong> {student_email}</p>
+                        <p><strong>Temporary Password:</strong> <span style="font-size: 1.3em; color: #667eea; font-weight: bold;">{random_password}</span></p>
+                    </div>
+                    
+                    <p><strong>⚠️ Important:</strong></p>
+                    <ul>
+                        <li>Keep this password secure</li>
+                        <li>You can change your password after first login</li>
+                        <li>Login at: http://localhost:5000/auth.html</li>
+                    </ul>
+                    
+                    <p>If you have any questions, please contact us.</p>
+                    
+                    <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                        <strong>AR PG Management System</strong><br>
+                        This is an automated message. Please do not reply to this email.
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        # Send email
+        send_email(student_email, email_subject, email_body, is_html=True)
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Student added successfully! Password sent to {student_email}'
+        }), 201
+        
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -858,12 +1005,45 @@ def get_all_payments():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/api/admin/mark-paid', methods=['POST'])
+@app.route('/api/admin/mark-paid', methods=['POST', 'OPTIONS'])
 def mark_payment_paid():
     """Mark payment as paid"""
+    
+    # Handle OPTIONS preflight
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
+        # Get admin token
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'success': False, 'message': 'No authorization token'}), 401
+        
+        token = auth_header.split(' ')[1]
+        
+        # Verify admin token
+        try:
+            import base64
+            token_data = json.loads(base64.b64decode(token).decode())
+            
+            # Check expiry
+            if datetime.now().timestamp() > token_data.get('exp', 0):
+                return jsonify({'success': False, 'message': 'Token expired'}), 401
+            
+            # Check role
+            if token_data.get('role') != 'admin':
+                return jsonify({'success': False, 'message': 'Admin access required'}), 403
+                
+        except Exception as e:
+            return jsonify({'success': False, 'message': 'Invalid token'}), 401
+        
+        # Get student phone
         data = request.json
         phone = data.get('phone')
+        
+        if not phone:
+            return jsonify({'success': False, 'message': 'Phone number required'}), 400
         
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -880,15 +1060,17 @@ def mark_payment_paid():
         room_number = student[1] or 'N/A'
         amount = student[2]
         
+        # ✅ FIXED: Remove LIMIT from UPDATE query
         cursor.execute('''
-            UPDATE payments SET status = 'paid', paymentDate = ?
+            UPDATE payments 
+            SET status = 'paid', paymentDate = ?
             WHERE studentPhone = ? AND status = 'pending'
-            LIMIT 1
         ''', (datetime.now().strftime('%d-%b-%Y'), phone))
         
         # Also update student payment status
         cursor.execute('''
-            UPDATE students SET paymentStatus = 'paid'
+            UPDATE students 
+            SET paymentStatus = 'paid'
             WHERE phone = ?
         ''', (phone,))
         
@@ -898,9 +1080,15 @@ def mark_payment_paid():
         # Notify owner about the payment (Manual verification)
         notify_owner_payment(student_name, phone, room_number, amount, 'Manual/Cash')
         
-        return jsonify({'success': True, 'message':'Payment marked as paid! Owner notified.'}), 200
+        return jsonify({
+            'success': True,
+            'message': 'Payment marked as paid! Owner notified.'
+        }), 200
     
     except Exception as e:
+        print(f'❌ Mark paid error: {str(e)}')
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/create-payment-order', methods=['POST'])
@@ -1023,13 +1211,18 @@ def send_reminder():
                 
                 # Send email if enabled
                 if send_email_flag and messageType == 'payment':
-                    email_sent = send_payment_reminder_email(
-                        student_name, 
-                        student_email, 
-                        8000, 
-                        datetime.now().strftime('%d-%b-%Y')
-                    )
-                    if not email_sent:
+    # ✅ Get monthly rent dynamically
+                 cursor.execute('SELECT monthlyRent FROM students WHERE phone = ?', (phone,))
+                student_rent = cursor.fetchone()
+                rent_amount = student_rent[0] if student_rent else 8000
+                email_sent = send_payment_reminder_email(
+                 student_name,
+                 student_email,
+                 rent_amount,
+                 datetime.now().strftime('%d-%b-%Y')
+                      )
+
+                if not email_sent:
                         email_errors.append(student_name)
                 elif send_email_flag:
                     email_sent = send_announcement_email(
@@ -1163,11 +1356,152 @@ def send_sms_route():
     
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+@app.route('/api/admin/update-student', methods=['POST'])
+def update_student():
+    """Admin endpoint to update existing student details"""
+    try:
+        # Get admin token
+        auth_header = request.headers.get('Authorization')
+        
+        print(f"🔍 Auth header: {auth_header}")  # ✅ DEBUG LOG
+        
+        if not auth_header or not auth_header.startswith('Bearer '):
+            print("❌ No auth header or wrong format")
+            return jsonify({'success': False, 'message': 'No authorization token'}), 401
+        
+        token = auth_header.split(' ')[1]
+        
+        print(f"🔍 Token: {token[:20]}...")  # ✅ DEBUG LOG
+        
+        # Verify admin token
+        try:
+            import base64
+            token_data = json.loads(base64.b64decode(token).decode())
+            
+            print(f"🔍 Token data: {token_data}")  # ✅ DEBUG LOG
+            
+            # Check expiry
+            if datetime.now().timestamp() > token_data.get('exp', 0):
+                print("❌ Token expired")
+                return jsonify({'success': False, 'message': 'Token expired'}), 401
+            
+            # Check role
+            if token_data.get('role') != 'admin':
+                print("❌ Not admin role")
+                return jsonify({'success': False, 'message': 'Admin access required'}), 403
+                
+            print("✅ Token verified successfully")
+            
+        except Exception as e:
+            print(f"❌ Token verification error: {str(e)}")
+            return jsonify({'success': False, 'message': f'Invalid token: {str(e)}'}), 401
+        
+        # Get student data
+        data = request.json
+        phone = data.get('phone')
+        
+        if not phone:
+            return jsonify({'success': False, 'message': 'Phone number required'}), 400
+        
+        # ✅ CRITICAL FIX: Use DB_FILE
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        if not student:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        # Update student details
+        cursor.execute('''
+            UPDATE students 
+            SET fullName = ?,
+                email = ?,
+                roomNumber = ?,
+                roomType = ?,
+                monthlyRent = ?
+            WHERE phone = ?
+        ''', (
+            data.get('fullName'),
+            data.get('email'),
+            data.get('roomNumber'),
+            data.get('roomType'),
+            data.get('monthlyRent'),
+            phone
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Student {data.get('fullName')} updated successfully")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Student {data.get("fullName")} updated successfully'
+        })
+        
+    except Exception as e:
+        print(f'❌ Update student error: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500 
+    # ==================== DELETE STUDENT ENDPOINT ====================
 
-# ==================== PASSWORD RESET ROUTES ====================
+@app.route('/api/admin/delete-student/<phone>', methods=['DELETE', 'OPTIONS'])
+def delete_student(phone):
+    """Delete a student from the system (Admin only)"""
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Check if student exists
+        cursor.execute('SELECT fullName FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        if not student:
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Student not found'
+            }), 404
+        
+        student_name = student[0]
+        
+        # Delete student's payment records first (foreign key constraint)
+        cursor.execute('DELETE FROM payments WHERE studentPhone = ?', (phone,))
+        
+        # Delete student's messages
+        cursor.execute('DELETE FROM messages WHERE studentPhone = ?', (phone,))
+        
+        # Delete the student
+        cursor.execute('DELETE FROM students WHERE phone = ?', (phone,))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Student deleted: {student_name} ({phone})")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Student {student_name} deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error deleting student: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
-# Store reset codes temporarily (in production, use Redis or database with expiry)
+
 reset_codes = {}
+
 # ==================== PASSWORD RESET ROUTES ====================
 
 @app.route('/api/forgot-password/send-code', methods=['POST'])
@@ -1334,7 +1668,7 @@ def reset_password():
         cursor.execute('''
             UPDATE students SET password = ?
             WHERE email = ?
-        ''', (new_password, email))
+        ''', (hash_password(new_password), email)) 
 
         conn.commit()
 
@@ -1452,7 +1786,50 @@ def not_found(error):
 def internal_error(error):
     return jsonify({'success': False, 'message': 'Internal server error!'}), 500
 
-# ==================== RUN SERVER ====================
+@app.route('/api/notify-payment', methods=['POST'])
+def notify_payment():
+    """Notify owner about manual payment (QR/UPI/Bank)"""
+    try:
+        data = request.json
+        phone = data.get('phone')
+        amount = data.get('amount', 8000)
+        method = data.get('method', 'Manual')
+        reference = data.get('reference', 'N/A')
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get student details
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        if not student:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student_name = student[0]
+        room_number = student[1] or 'N/A'
+        
+        # Create payment record (pending verification)
+        cursor.execute('''
+            INSERT INTO payments (studentPhone, amount, dueDate, paymentDate, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (phone, amount, datetime.now().strftime('%d-%b-%Y'), 
+              datetime.now().strftime('%d-%b-%Y'), 'pending_verification'))
+        
+        conn.commit()
+        conn.close()
+        
+        # Notify owner
+        notify_owner_payment(student_name, phone, room_number, amount, f'{method} - Ref: {reference}')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment notification sent to owner'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 # ==================== INQUIRY ROUTE ====================
 @app.route('/api/inquiry', methods=['POST'])
 def handle_inquiry():
@@ -1523,10 +1900,850 @@ def get_inquiries():
         return jsonify({'success': True, 'inquiries': inquiries_list}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+import os
+
+# Add these routes BEFORE if __name__ == '__main__':
+import os
+
+# Get the directory where backend.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(BASE_DIR)  # d:\PG\
+
+@app.route('/forgot-password.html')
+def forgot_password_page():
+    return send_from_directory(PARENT_DIR, 'forgot-password.html')
+
+@app.route('/auth.html')
+def auth_page():
+    return send_from_directory(PARENT_DIR, 'auth.html')
+
+@app.route('/admin.html')
+def admin_page():
+    return send_from_directory(PARENT_DIR, 'admin.html')
+
+@app.route('/dashboard.html')
+def dashboard_page():
+    return send_from_directory(PARENT_DIR, 'dashboard.html')
+
+@app.route('/payment.html')
+def payment_page():
+    return send_from_directory(PARENT_DIR, 'payment.html')
 
 
+@app.route('/index.html')
+@app.route('/')
+def index_page():
+    return send_from_directory(PARENT_DIR, 'index.html')
+
+@app.route('/admin-forgot-password.html')
+def admin_forgot_password_page():
+    return send_from_directory(PARENT_DIR, 'admin-forgot-password.html')
+@app.route('/current-bill.html')
+def current_bill_page():
+    return send_from_directory(PARENT_DIR, 'current-bill.html')
+# @app.route('/api/current-bills/pending', methods=['GET'])
+# def get_pending_current_bills():
+#     """Get all pending current bill verifications for admin"""
+
+# ✅ Serve static files (CSS, JS, images)
+@app.route('/<path:filename>')
+def serve_static(filename):
+    return send_from_directory(PARENT_DIR, filename)
+# ==================== ADMIN PASSWORD RESET ROUTES ====================
+
+@app.route('/api/admin-forgot-password/send-code', methods=['POST', 'OPTIONS'])
+def admin_send_reset_code():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        data = request.json
+        email = data.get('email')
+
+        if not email:
+            return jsonify({'success': False, 'message': 'Email is required'}), 400
+
+        # Check if this is an admin email (you can customize this check)
+        # For now, let's assume admin email should be in your system
+        # Lines 1831-1833 - Replace with:
+        ADMIN_EMAIL_FROM_ENV = os.getenv('ADMIN_EMAIL')
+        if email != ADMIN_EMAIL_FROM_ENV:
+         return jsonify({'success': False, 'message': 'Not an admin email'}), 403
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        # Generate 6-digit reset code
+        code = str(random.randint(100000, 999999))
+
+        # Expire in 10 minutes
+        expires_at = (datetime.now() + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
+
+        # Clear previous codes for this email
+        cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+
+        # Save new code
+        cursor.execute('''
+            INSERT INTO password_resets (email, code, expires_at)
+            VALUES (?, ?, ?)
+        ''', (email, code, expires_at))
+
+        conn.commit()
+        conn.close()
+
+        # Send email
+        subject = "Admin Password Reset Code - AR PG"
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif;">
+                <div style="background: linear-gradient(135deg, #1e1f47 0%, #3a2e8a 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <h2>🔐 Admin Password Reset Request</h2>
+                </div>
+                
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <p>Hello <strong>Admin</strong>,</p>
+                    
+                    <p>We received a request to reset your admin password. Use the code below:</p>
+                    
+                    <div style="background: white; padding: 20px; border-left: 4px solid #3a2e8a; margin: 20px 0; text-align: center;">
+                        <h1 style="color: #3a2e8a; font-size: 2.5em; letter-spacing: 6px; margin: 10px 0;">{code}</h1>
+                        <p style="color: #999; font-size: 0.9em;">This code is valid for 10 minutes.</p>
+                    </div>
+                    
+                    <p><strong>⚠️ Security Alert:</strong></p>
+                    <ul>
+                        <li>Do not share this code with anyone.</li>
+                        <li>If you didn't request this, ignore this email.</li>
+                    </ul>
+                </div>
+            </body>
+        </html>
+        """
+
+        send_email(email, subject, body, is_html=True)
+
+        return jsonify({
+            'success': True,
+            'message': f'Reset code sent to {email}'
+        }), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin-forgot-password/verify-code', methods=['POST', 'OPTIONS'])
+def admin_verify_reset_code():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        data = request.json
+        email = data.get('email')
+        code = data.get('code')
+
+        if not email or not code:
+            return jsonify({'success': False, 'message': 'Email and code are required'}), 400
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT code, expires_at FROM password_resets WHERE email = ?', (email,))
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'No reset request found'}), 404
+
+        stored_code, expires_at_str = row
+
+        # Check expiry
+        expires_at = datetime.strptime(expires_at_str, '%Y-%m-%d %H:%M:%S')
+        if datetime.now() > expires_at:
+            cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+            conn.commit()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Reset code expired'}), 400
+
+        # Check code
+        if stored_code != code:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Invalid reset code'}), 400
+
+        conn.close()
+        return jsonify({'success': True, 'message': 'Code verified successfully!'}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin-forgot-password/reset', methods=['POST', 'OPTIONS'])
+def admin_reset_password():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        data = request.json
+        email = data.get('email')
+        new_password = data.get('newPassword')
+
+        if not email or not new_password:
+            return jsonify({'success': False, 'message': 'Email and password are required'}), 400
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        # Verify reset session
+        cursor.execute('SELECT expires_at FROM password_resets WHERE email = ?', (email,))
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Reset session expired'}), 400
+
+        # For admin, you might have a separate admin table
+        # For now, we'll just confirm the reset
+        # In production, update the admin password in your admin table
+
+        # Remove reset entry
+        cursor.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Admin password reset successful!'}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    # ==================== ADMIN LOGIN ROUTE ====================
+
+@app.route('/api/admin-login', methods=['POST', 'OPTIONS'])
+def admin_login():
+    """Handle admin login and generate token"""
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return jsonify({'success': False, 'message': 'Email and password are required'}), 400
+
+        # Hardcoded admin credentials (you can enhance this later with database)
+        ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
+        ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
+
+        if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+            # Generate a simple token (base64 encoded JSON)
+            import base64
+            token_data = {
+                'email': email,
+                'role': 'admin',
+                'exp': (datetime.now() + timedelta(days=1)).timestamp()
+            }
+            token = base64.b64encode(json.dumps(token_data).encode()).decode()
+
+            return jsonify({
+                'success': True,
+                'token': token,
+                'message': 'Login successful',
+                'email': email
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid admin credentials'
+            }), 401
+
+    except Exception as e:
+        print(f"❌ Error in admin login: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    # ==================== CURRENT BILL ROUTES ====================
+
+@app.route('/api/current-bill/status/<phone>', methods=['GET'])
+def get_current_bill_status(phone):
+    """Check if student has paid current month's electricity bill"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get current month/year
+        current_month = datetime.now().strftime('%b-%Y')  # e.g., "Feb-2026"
+        
+        # Check if current bill is paid
+        cursor.execute('''
+            SELECT * FROM current_bills 
+            WHERE studentPhone = ? AND month = ? AND status = 'paid'
+        ''', (phone, current_month))
+        
+        bill = cursor.fetchone()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'isPaid': bill is not None,
+            'month': current_month
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/current-bills/<phone>', methods=['GET'])
+def get_student_current_bills(phone):
+    """Get current bill history for a specific student"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get all bills for this student
+        cursor.execute('''
+            SELECT id, amount, month, paymentDate, status, paymentProof
+            FROM current_bills
+            WHERE studentPhone = ?
+            ORDER BY paymentDate DESC
+        ''', (phone,))
+        
+        bills = cursor.fetchall()
+        
+        # Also get student details
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        conn.close()
+        
+        if not student:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        # Get current month
+        current_month = datetime.now().strftime('%b-%Y')
+        
+        # Check if current month is paid
+        current_month_paid = any(b[2] == current_month and b[4] == 'paid' for b in bills)
+        
+        return jsonify({
+            'success': True,
+            'student': {
+                'name': student[0],
+                'phone': phone,
+                'roomNumber': student[1] or 'N/A'
+            },
+            'currentMonth': current_month,
+            'isPaid': current_month_paid,
+            'bills': [
+                {
+                    'id': b[0],
+                    'amount': b[1],
+                    'month': b[2],
+                    'paymentDate': b[3],
+                    'status': b[4],
+                    'hasProof': b[5] is not None
+                }
+                for b in bills
+            ]
+        }), 200
+        
+    except Exception as e:
+        print(f'❌ Error fetching bills: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+@app.route('/api/current-bill/email', methods=['POST'])
+def email_current_bill():
+    """Email current bill to student"""
+    try:
+        data = request.json
+        phone = data.get('phone')
+        month = data.get('month', datetime.now().strftime('%b-%Y'))
+        
+        if not phone:
+            return jsonify({'success': False, 'message': 'Phone required'}), 400
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get student details
+        cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        if not student:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student_name = student[0]
+        student_email = student[1]
+        room_number = student[2] or 'N/A'
+        
+        # Check if bill is paid
+        cursor.execute('''
+            SELECT status FROM current_bills 
+            WHERE studentPhone = ? AND month = ?
+        ''', (phone, month))
+        
+        bill = cursor.fetchone()
+        status = bill[0] if bill else 'Pending'
+        
+        conn.close()
+        
+        # Calculate due date (5th of next month)
+        now = datetime.now()
+        if now.month == 12:
+            due_date = datetime(now.year + 1, 1, 5)
+        else:
+            due_date = datetime(now.year, now.month + 1, 5)
+        due_date_str = due_date.strftime('%d-%b-%Y')
+        
+        # Send email
+        subject = f"Current Bill - {month} - AR PG"
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <h2>⚡ Current Bill - {month}</h2>
+                </div>
+                
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <p>Hello <strong>{student_name}</strong>,</p>
+                    
+                    <p>Here are your current bill details:</p>
+                    
+                    <div style="background: white; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px; font-weight: bold;">Room Number:</td>
+                                <td style="padding: 8px;">{room_number}</td>
+                            </tr>
+                            <tr style="background: #f9f9f9;">
+                                <td style="padding: 8px; font-weight: bold;">Bill Month:</td>
+                                <td style="padding: 8px;">{month}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; font-weight: bold;">Amount:</td>
+                                <td style="padding: 8px; color: #667eea; font-weight: bold; font-size: 1.2em;">₹200</td>
+                            </tr>
+                            <tr style="background: #f9f9f9;">
+                                <td style="padding: 8px; font-weight: bold;">Due Date:</td>
+                                <td style="padding: 8px;">{due_date_str}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; font-weight: bold;">Status:</td>
+                                <td style="padding: 8px;">
+                                    <span style="{'background: #d4edda; color: #155724;' if status == 'paid' else 'background: #fff3cd; color: #856404;'} padding: 5px 10px; border-radius: 15px; font-weight: bold;">
+                                        {status.upper()}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p><strong>Payment Details:</strong></p>
+                    <ul>
+                        <li>Monthly Electricity Charge: ₹200</li>
+                        <li>Includes: Room lighting, fan, charging points</li>
+                        <li>Late Fee: ₹50 per day after due date</li>
+                    </ul>
+                    
+                    <p>Login to your dashboard to pay online or view detailed bill.</p>
+                    
+                    <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                        <strong>AR PG Management System</strong><br>
+                        Contact: +91-9738225350 | ravishankargowda88@gmail.com
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        email_sent = send_email(student_email, subject, body, is_html=True)
+        
+        if email_sent:
+            return jsonify({
+                'success': True,
+                'message': f'Bill sent to {student_email}'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to send email'
+            }), 500
+        
+    except Exception as e:
+        print(f'❌ Email error: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/current-bill/pay', methods=['POST'])
+def pay_current_bill():
+    """Record current bill payment"""
+    try:
+        data = request.json
+        phone = data.get('phone')
+        amount = data.get('amount', 200)
+        month = data.get('month')
+        
+        if not phone:
+            return jsonify({'success': False, 'message': 'Phone required'}), 400
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get student details
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        if not student:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student_name = student[0]
+        room_number = student[1] or 'N/A'
+        
+        # Current month if not provided
+        if not month:
+            month = datetime.now().strftime('%b-%Y')
+        
+        # Check if already paid
+        cursor.execute('''
+            SELECT * FROM current_bills 
+            WHERE studentPhone = ? AND month = ?
+        ''', (phone, month))
+        
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Already paid for this month'}), 400
+        
+        # Record payment
+        cursor.execute('''
+            INSERT INTO current_bills (studentPhone, amount, month, paymentDate, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (phone, amount, month, datetime.now().strftime('%d-%b-%Y'), 'paid'))
+        
+        conn.commit()
+        conn.close()
+        
+        # Notify owner
+        notify_owner_payment(student_name, phone, room_number, amount, 'Current Bill (Online)')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Current bill paid successfully!'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+@app.route('/api/current-bill/upload-proof', methods=['POST'])
+def upload_current_bill_proof():
+    """Upload payment proof for current bill (pending admin verification)"""
+    try:
+        data = request.json
+        phone = data.get('phone')
+        amount = data.get('amount', 200)
+        month = data.get('month')
+        payment_proof = data.get('paymentProof')  # Base64 image
+        
+        if not phone or not payment_proof:
+            return jsonify({'success': False, 'message': 'Phone and payment proof required'}), 400
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get student details
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        if not student:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student_name = student[0]
+        room_number = student[1] or 'N/A'
+        
+        # Current month if not provided
+        if not month:
+            month = datetime.now().strftime('%b-%Y')
+        
+        # Check if already submitted proof for this month
+        cursor.execute('''
+            SELECT * FROM current_bills 
+            WHERE studentPhone = ? AND month = ?
+        ''', (phone, month))
+        
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Payment proof already submitted'}), 400
+        
+        # Save payment proof (pending verification)
+        cursor.execute('''
+            INSERT INTO current_bills (studentPhone, amount, month, paymentDate, status, paymentProof)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (phone, amount, month, datetime.now().strftime('%d-%b-%Y'), 'pending_verification', payment_proof))
+        
+        conn.commit()
+        conn.close()
+        
+        # Notify owner about pending verification
+        notify_owner_payment(student_name, phone, room_number, amount, 'Current Bill (Proof Uploaded - Pending)')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment proof uploaded! Admin will verify within 24 hours.'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+@app.route('/api/current-bill/verify/<phone>/<month>', methods=['POST'])
+def verify_current_bill_payment(phone, month):
+    """Admin verifies current bill payment proof"""
+    try:
+        data = request.json
+        approve = data.get('approve', True)  # True to approve, False to reject
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get payment record
+        cursor.execute('''
+            SELECT * FROM current_bills 
+            WHERE studentPhone = ? AND month = ? AND status = 'pending_verification'
+        ''', (phone, month))
+        
+        payment = cursor.fetchone()
+        
+        if not payment:
+            conn.close()
+            return jsonify({'success': False, 'message': 'No pending payment found'}), 404
+        
+        if approve:
+            # Approve payment
+            cursor.execute('''
+                UPDATE current_bills 
+                SET status = 'paid'
+                WHERE studentPhone = ? AND month = ?
+            ''', (phone, month))
+            message = 'Payment approved!'
+        else:
+            # Reject payment
+            cursor.execute('''
+                DELETE FROM current_bills 
+                WHERE studentPhone = ? AND month = ?
+            ''', (phone, month))
+            message = 'Payment rejected!'
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    # ==================== ADD THIS TO YOUR app.py ====================
+# Add this route around line 1350 (after the other current-bill routes)
+
+@app.route('/api/current-bills/pending', methods=['GET'])
+def get_pending_current_bills():
+    """Get all pending current bill verifications for admin"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get all pending verifications with student details
+        cursor.execute('''
+            SELECT cb.studentPhone, cb.amount, cb.month, cb.paymentDate, 
+                   cb.paymentProof, s.fullName, s.roomNumber
+            FROM current_bills cb
+            JOIN students s ON cb.studentPhone = s.phone
+            WHERE cb.status = 'pending_verification'
+            ORDER BY cb.paymentDate DESC
+        ''')
+        
+        bills = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'bills': [
+                {
+                    'phone': b[0],
+                    'amount': b[1],
+                    'month': b[2],
+                    'paymentDate': b[3],
+                    'paymentProof': b[4],
+                    'studentName': b[5],
+                    'roomNumber': b[6] or 'N/A'
+                }
+                for b in bills
+            ]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    # ==================== RAZORPAY CURRENT BILL ROUTES ====================
+
+@app.route('/api/current-bill/create-razorpay-order', methods=['POST'])
+def create_razorpay_order_current_bill():
+    """Create Razorpay order for current bill payment"""
+    try:
+        if not razorpay_client:
+            return jsonify({
+                'success': False,
+                'message': 'Razorpay not configured. Please use UPI payment option.'
+            }), 400
+        
+        data = request.json
+        phone = data.get('phone')
+        amount = data.get('amount', 200)  # Current bill amount
+        
+        if not phone:
+            return jsonify({'success': False, 'message': 'Phone required'}), 400
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get student details
+        cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        conn.close()
+        
+        if not student:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student_name = student[0]
+        student_email = student[1]
+        room_number = student[2] or 'N/A'
+        
+        # Create Razorpay order
+        order_data = {
+            'amount': amount * 100,  # Razorpay expects amount in paise (₹200 = 20000 paise)
+            'currency': 'INR',
+            'receipt': f'current_bill_{phone}_{int(datetime.now().timestamp())}',
+            'notes': {
+                'student_name': student_name,
+                'student_phone': phone,
+                'room_number': room_number,
+                'bill_type': 'current_bill',
+                'month': datetime.now().strftime('%b-%Y')
+            }
+        }
+        
+        razorpay_order = razorpay_client.order.create(data=order_data)
+        
+        return jsonify({
+            'success': True,
+            'order_id': razorpay_order['id'],
+            'amount': amount,
+            'currency': 'INR',
+            'key_id': RAZORPAY_KEY_ID,
+            'student_name': student_name,
+            'student_email': student_email,
+            'student_phone': phone
+        }), 200
+        
+    except Exception as e:
+        print(f'❌ Razorpay order creation error: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/current-bill/verify-razorpay-payment', methods=['POST'])
+def verify_razorpay_current_bill_payment():
+    """Verify Razorpay payment signature and record payment"""
+    try:
+        if not razorpay_client:
+            return jsonify({'success': False, 'message': 'Razorpay not configured'}), 400
+        
+        data = request.json
+        phone = data.get('phone')
+        razorpay_order_id = data.get('razorpay_order_id')
+        razorpay_payment_id = data.get('razorpay_payment_id')
+        razorpay_signature = data.get('razorpay_signature')
+        
+        if not all([phone, razorpay_order_id, razorpay_payment_id, razorpay_signature]):
+            return jsonify({'success': False, 'message': 'Missing payment details'}), 400
+        
+        # Verify payment signature
+        try:
+            razorpay_client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            })
+        except Exception as e:
+            print(f'❌ Payment signature verification failed: {str(e)}')
+            return jsonify({
+                'success': False,
+                'message': 'Payment verification failed. Please contact support.'
+            }), 400
+        
+        # Payment verified! Record in database
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get student details
+        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = ?', (phone,))
+        student = cursor.fetchone()
+        
+        if not student:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student_name = student[0]
+        room_number = student[1] or 'N/A'
+        
+        month = datetime.now().strftime('%b-%Y')
+        
+        # Check if already paid
+        cursor.execute('''
+            SELECT * FROM current_bills 
+            WHERE studentPhone = ? AND month = ?
+        ''', (phone, month))
+        
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Bill already paid for this month'
+            }), 400
+        
+        # Record payment as PAID (Razorpay verified!)
+        cursor.execute('''
+            INSERT INTO current_bills (studentPhone, amount, month, paymentDate, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (phone, 200, month, datetime.now().strftime('%d-%b-%Y'), 'paid'))
+        
+        conn.commit()
+        conn.close()
+        
+        # Notify owner
+        notify_owner_payment(student_name, phone, room_number, 200, 'Current Bill (Razorpay - Verified)')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment verified and recorded successfully!',
+            'payment_id': razorpay_payment_id
+        }), 200
+        
+    except Exception as e:
+        print(f'❌ Razorpay verification error: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
 if __name__ == '__main__':
     print("🚀 Starting AR PG Backend Server...")
     print("📍 Server running at: http://localhost:5000")
-    print("🛑 Press CTRL+C to stop the server")
-    app.run(debug=True, host='localhost', port=5000)
+    print("🛑 Press CTRL+C to stop")
+    if DEBUG_MODE:
+        print("⚠️ Running in DEBUG mode")
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    else:
+        print("✅ Running in PRODUCTION mode")
+        from waitress import serve
+        serve(app, host='0.0.0.0', port=5000, threads=8)

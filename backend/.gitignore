@@ -1,0 +1,129 @@
+# ==========================================
+# AR PG Management System - .gitignore
+# ==========================================
+
+# ===== CRITICAL: NEVER COMMIT THESE! =====
+
+# Environment Variables (Contains Secrets!)
+.env
+backend/.env
+*.env
+
+# Database (Contains User Data!)
+*.db
+arpg_database.db
+backend/*.db
+
+# ===== PYTHON-RELATED =====
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv
+.Python
+
+# Distribution / Packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ===== IDE / EDITOR FILES =====
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ===== OPERATING SYSTEM FILES =====
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ===== LOGS & TEMPORARY FILES =====
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+*.bak
+*.backup
+
+# ===== TESTING & COVERAGE =====
+
+# pytest
+.pytest_cache/
+.tox/
+
+# Coverage
+.coverage
+htmlcov/
+.hypothesis/
+
+# ===== NODE.JS (if you add frontend build tools) =====
+
+# node_modules (in case you use npm/yarn)
+node_modules/
+package-lock.json
+yarn.lock
+
+# ===== OTHER =====
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
