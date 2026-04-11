@@ -693,6 +693,16 @@ def get_student_payments(phone):
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    return jsonify({
+        "ownerUpiId": os.getenv('OWNER_UPI'),
+        "ownerName": os.getenv('OWNER_NAME'),
+        "ownerPhone": os.getenv('OWNER_PHONE'),
+        "monthlyRent": 8000,
+        "pgName": os.getenv('PG_NAME'),
+        "billAmount": os.getenv('CURRENT_BILL_AMOUNT', 200)  # or dynamic if needed
+    })
 
 @app.route('/api/student/<phone>/messages', methods=['GET'])
 def get_student_messages(phone):
