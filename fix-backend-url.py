@@ -37,7 +37,22 @@ FILES_TO_FIX = [
 
 # console.log('✅ Using BACKEND_URL:', BACKEND_URL);'''
 NEW_BACKEND_URL = '''const BACKEND_URL = (() => {
+
     return 'https://pg-website2.onrender.com/api';
+=======
+    const hostname = window.location.hostname;
+    
+    // Local development (works with mobile testing)
+    if (hostname === 'localhost' || 
+        hostname === '127.0.0.1' || 
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        hostname.endsWith('.local')) {
+        return `https://pg-website2.onrender.com/api`;
+    }
+    
+    // Option 2: If backend is on a different domain (uncomment below)
+     return 'https://pg-website2.onrender.com/api';;
 })();
 '''
 
@@ -127,7 +142,7 @@ def main():
     print()
     
     # Change to PG directory
-    pg_dir = r'd:\PG'
+    pg_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend')
     
     if not os.path.exists(pg_dir):
         print(f'❌ Directory not found: {pg_dir}')
@@ -165,6 +180,11 @@ def main():
         print()
         print('   Replace with your actual backend URL if different domain:')
         print('   return \'https://pg-website2.onrender.com/api\';')
+=======
+        print("     return 'https://pg-website2.onrender.com/api;'")
+        print()
+        print('   Replace with your actual backend URL if different domain:')
+        print('    return https://pg-website2.onrender.com/api;')
     else:
         print('⚠️  No files were fixed. Please check manually.')
     
