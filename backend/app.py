@@ -39,9 +39,17 @@ def smart_limit_key():
 limiter = Limiter(
     app=app,
     key_func=smart_limit_key,
-    default_limits=["300 per day", "60 per hour"],
+    default_limits=["1000 per day", "200 per hour"],
     storage_uri="memory://"
 )
+# ADD this right after the limiter definition:
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({
+        'success': False,
+        'message': 'Too many attempts. Please wait 1 minute and try again.'
+    }), 429
+    
 def require_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
