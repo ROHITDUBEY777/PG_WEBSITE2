@@ -2960,4 +2960,6 @@ if __name__ == '__main__':
     else:
         print("âœ… Running in PRODUCTION mode")
         from waitress import serve
-        serve(app, host='0.0.0.0', port=5000, threads=20)
+        port = int(os.environ.get('PORT', 10000))
+        serve(app, host='0.0.0.0', port=port, threads=20)
+        
