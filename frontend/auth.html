@@ -5,6 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AR PG | Login & Signup</title>
+  <link rel="icon" type="image/png" href="/assets/image.png">
+<link rel="shortcut icon" href="/assets/image.png">
 
   <style>
     * {
@@ -492,6 +494,12 @@
         marqueeContent.innerHTML = messagesHtml + messagesHtml;
       }
     })();
+    // Wake up Render backend on page load
+function wakeUpBackend() {
+    fetch(`${BACKEND_URL}/test`, { method: 'GET' })
+        .catch(() => {}); // Silent - just waking it up
+}
+wakeUpBackend(); // Call immediately when page loads
 
     async function fetchWithTimeout(url, options = {}, timeout = 60000) {
       const controller = new AbortController();
