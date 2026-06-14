@@ -496,10 +496,16 @@
     })();
     // Wake up Render backend on page load
 function wakeUpBackend() {
-    fetch(`${BACKEND_URL}/test`, { method: 'GET' })
-        .catch(() => {}); // Silent - just waking it up
+    const url = (() => {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return `http://${hostname}:5000/api`;
+        }
+        return 'https://pg-website2.onrender.com/api';
+    })();
+    fetch(`${url}/test`, { method: 'GET' }).catch(() => {});
 }
-wakeUpBackend(); // Call immediately when page loads
+wakeUpBackend();
 
     async function fetchWithTimeout(url, options = {}, timeout = 60000) {
       const controller = new AbortController();
