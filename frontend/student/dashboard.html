@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AR PG - Student Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <style>
     :root{
       --primary:#6366F1; --secondary:#8B5CF6; --accent:#22D3EE;
@@ -845,6 +847,8 @@ input::placeholder {
           <li><a href="#messages" class="side-link nav-link" onclick="showSection('messages', event)">📬 Messages</a></li>
           <li><a href="current-bill.html" class="side-link nav-link">⚡ Current Bill</a></li>
           <li><a href="#aria-chat" class="side-link nav-link" onclick="showSection('aria-chat', event)">🤖 Aria Assistant</a></li>
+          <li><a href="#contract.html" class="side-link nav-link" onclick="showSection('contract',event)">📄 Contract Agreement</a></li>
+          <li><a href="#upload-documents.html" class="side-link nav-link" onclick="showSection('uploadDocument',event)">📁 My Documents</a></li>
         </ul>
       </div>
     </aside>
@@ -1094,6 +1098,30 @@ input::placeholder {
           </div>
         </div>
       </section>
+
+      <section id="contract" class="section">
+        <h1 class="page-title">Contract Agreement</h1>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <iframe
+            src="contract.html"
+            title="AR PG Contract Agreement"
+            style="width:100%;min-height:1200px;border:0;display:block;background:#fff;"
+            loading="lazy"
+          ></iframe>
+        </div>
+      </section>
+
+         <section id="uploadDocument" class="section">
+        <h1 class="page-title">Upload Documents </h1>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <iframe
+            src="upload-documents.html"
+            title=" upload your Documents here "
+            style="width:100%;min-height:1200px;border:0;display:block;background:#fff;"
+            loading="lazy"
+          ></iframe>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -1111,6 +1139,8 @@ input::placeholder {
         <div class="cmdp-item" data-go="payments">💳 Go to Payments</div>
         <div class="cmdp-item" data-go="messages">📬 Go to Messages</div>
         <div class="cmdp-item" data-go="aria-chat">🤖 Chat with Aria</div>
+        <div class="cmdp-item" data-go="contract">📄 Go to Contract</div>
+        <div class="cmdp-item" data-url="upload-documents.html">📁 Go to Documents</div>
         <div class="cmdp-item" data-action="logout">🚪 Logout</div>
       </div>
     </div>
@@ -1151,16 +1181,23 @@ if (typeof window !== 'undefined') {
     location.replace(`https:${location.href.substring(location.protocol.length)}`);
   }
 }
-  // ✅ Authentication Check (Add after line 623)
-(function checkAuth() {
-  const currentStudentPhone = localStorage.getItem('currentStudentPhone');
-  
-  if (!currentStudentPhone) {
-    alert('⚠️ Please login first!');
-    window.location.href = '../auth.html';
-    return;
+  // Guest mode is allowed: no redirect when not logged in.
+  function getStoredStudentPhone() {
+    return (localStorage.getItem('currentStudentPhone') || '').trim();
   }
-})();
+
+  function getActiveStudentPhone() {
+    const contractPhone = (document.getElementById('contractPhone')?.value || '').trim();
+    const docPhone = (document.getElementById('docPhone')?.value || '').trim();
+    return contractPhone || docPhone || getStoredStudentPhone();
+  }
+
+  function setStatusText(elementId, message, isError) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.textContent = message;
+    el.style.color = isError ? '#dc2626' : '#0f1a30';
+  }
 
     // Theme
     const THEME_KEY='arpg-theme';
@@ -1212,8 +1249,11 @@ if (typeof window !== 'undefined') {
     });
     cmdList.addEventListener('click',e=>{
       const item=e.target.closest('.cmdp-item'); if(!item) return;
-      const go=item.getAttribute('data-go'); const action=item.getAttribute('data-action');
+      const go=item.getAttribute('data-go');
+      const url=item.getAttribute('data-url');
+      const action=item.getAttribute('data-action');
       if(go){showSection(go);closeCommand();}
+      if(url){window.location.href=url;closeCommand();}
       if(action==='logout'){logout();closeCommand();}
     });
     cmdp.addEventListener('click',e=>{if(e.target===cmdp)closeCommand();});
@@ -1352,6 +1392,277 @@ async function loadAnnouncements()
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+
+    let contractSignaturePad = null;
+
+    function initContractSignaturePad() {
+      // contractSignatureCanvas lives inside the contract.html iframe — skip from parent
+      const canvas = document.getElementById('contractSignatureCanvas');
+      if (!canvas || typeof SignaturePad === 'undefined') return;
+
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      const context = canvas.getContext('2d');
+      context.scale(ratio, ratio);
+
+      contractSignaturePad = new SignaturePad(canvas, {
+        penColor: '#111827',
+        minWidth: 0.7,
+        maxWidth: 2.0
+      });
+    }
+
+    function clearContractSignature() {
+      if (contractSignaturePad) {
+        contractSignaturePad.clear();
+      }
+      setStatusText('contractStatus', 'Signature cleared.', false);
+    }
+
+    async function saveContract() {
+      const phone = getActiveStudentPhone();
+      const fatherName = (document.getElementById('fatherName')?.value || '').trim();
+      const admissionDate = (document.getElementById('admissionDate')?.value || '').trim();
+      const durationMonths = Number(document.getElementById('durationMonths')?.value || 12);
+      const monthlyRent = Number(document.getElementById('monthlyRentContract')?.value || 8000);
+      const securityDeposit = Number(document.getElementById('securityDeposit')?.value || 16000);
+      const homeAddress = (document.getElementById('homeAddress')?.value || '').trim();
+
+      if (!/^\d{10}$/.test(phone)) {
+        setStatusText('contractStatus', 'Please enter a valid 10-digit phone number.', true);
+        return;
+      }
+
+      if (!fatherName || !admissionDate || !homeAddress) {
+        setStatusText('contractStatus', 'Please complete all required contract fields.', true);
+        return;
+      }
+
+      if (!contractSignaturePad || contractSignaturePad.isEmpty()) {
+        setStatusText('contractStatus', 'Please draw your signature before saving.', true);
+        return;
+      }
+
+      const payload = {
+        father_name: fatherName,
+        admission_date: admissionDate,
+        duration_months: durationMonths,
+        monthly_rent: monthlyRent,
+        security_deposit: securityDeposit,
+        home_address: homeAddress,
+        signature_data: contractSignaturePad.toDataURL('image/png')
+      };
+
+      try {
+        setStatusText('contractStatus', 'Saving contract...', false);
+        const response = await fetch(`${BACKEND_URL}/student/${phone}/contract`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setStatusText('contractStatus', 'Contract saved successfully.', false);
+        } else {
+          setStatusText('contractStatus', data.message || 'Failed to save contract.', true);
+        }
+      } catch (error) {
+        setStatusText('contractStatus', `Contract save failed: ${error.message}`, true);
+      }
+    }
+
+    async function loadContract() {
+      const phone = getActiveStudentPhone();
+      if (!/^\d{10}$/.test(phone)) {
+        setStatusText('contractStatus', 'Enter phone number to load contract.', true);
+        return;
+      }
+
+      try {
+        setStatusText('contractStatus', 'Loading contract...', false);
+        const response = await fetch(`${BACKEND_URL}/student/${phone}/contract`);
+        const data = await response.json();
+
+        if (!response.ok || !data.success || !data.contract) {
+          setStatusText('contractStatus', data.message || 'No contract found for this phone.', true);
+          return;
+        }
+
+        const c = data.contract;
+        document.getElementById('contractPhone').value = phone;
+        document.getElementById('fatherName').value = c.father_name || '';
+        document.getElementById('admissionDate').value = c.admission_date || '';
+        document.getElementById('durationMonths').value = c.duration_months || 12;
+        document.getElementById('monthlyRentContract').value = c.monthly_rent || 0;
+        document.getElementById('securityDeposit').value = c.security_deposit || 0;
+        document.getElementById('homeAddress').value = c.home_address || '';
+
+        if (contractSignaturePad) {
+          contractSignaturePad.clear();
+          if (c.signature_data) {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.getElementById('contractSignatureCanvas');
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+            };
+            img.src = c.signature_data;
+          }
+        }
+
+        setStatusText('contractStatus', `Contract loaded. Last signed: ${c.signed_at || 'N/A'}`, false);
+      } catch (error) {
+        setStatusText('contractStatus', `Unable to load contract: ${error.message}`, true);
+      }
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function uploadDocument() {
+      const phone = getActiveStudentPhone();
+      const docName = (document.getElementById('docName')?.value || '').trim();
+      const docType = (document.getElementById('docType')?.value || '').trim();
+      const fileInput = document.getElementById('docFile');
+      const file = fileInput?.files?.[0];
+
+      if (!/^\d{10}$/.test(phone)) {
+        setStatusText('docStatus', 'Please enter a valid 10-digit phone number.', true);
+        return;
+      }
+      if (!docName || !docType || !file) {
+        setStatusText('docStatus', 'Please fill document name, type, and choose a file.', true);
+        return;
+      }
+
+      try {
+        setStatusText('docStatus', 'Uploading document...', false);
+        const docData = await readFileAsDataUrl(file);
+        const response = await fetch(`${BACKEND_URL}/student/${phone}/documents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doc_name: docName,
+            doc_type: docType,
+            doc_data: docData
+          })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setStatusText('docStatus', 'Document uploaded successfully.', false);
+          if (fileInput) fileInput.value = '';
+          await loadDocuments();
+        } else {
+          setStatusText('docStatus', data.message || 'Upload failed.', true);
+        }
+      } catch (error) {
+        setStatusText('docStatus', `Upload error: ${error.message}`, true);
+      }
+    }
+
+    async function viewDocument(docId) {
+      const phone = getActiveStudentPhone();
+      if (!/^\d{10}$/.test(phone)) {
+        setStatusText('docStatus', 'Phone number required to view document.', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/student/${phone}/documents/${docId}/content`);
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.doc_data) {
+          setStatusText('docStatus', data.message || 'Unable to open document.', true);
+          return;
+        }
+
+        const win = window.open('', '_blank');
+        if (!win) {
+          setStatusText('docStatus', 'Popup blocked. Allow popups to view document.', true);
+          return;
+        }
+        win.document.write(`<iframe src="${data.doc_data}" style="border:0;width:100vw;height:100vh;"></iframe>`);
+      } catch (error) {
+        setStatusText('docStatus', `View error: ${error.message}`, true);
+      }
+    }
+
+    async function deleteDocument(docId) {
+      const phone = getActiveStudentPhone();
+      if (!/^\d{10}$/.test(phone)) {
+        setStatusText('docStatus', 'Phone number required to delete document.', true);
+        return;
+      }
+
+      const ok = window.confirm('Delete this document?');
+      if (!ok) return;
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/student/${phone}/documents/${docId}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setStatusText('docStatus', 'Document deleted.', false);
+          await loadDocuments();
+        } else {
+          setStatusText('docStatus', data.message || 'Delete failed.', true);
+        }
+      } catch (error) {
+        setStatusText('docStatus', `Delete error: ${error.message}`, true);
+      }
+    }
+
+    async function loadDocuments() {
+      const phone = getActiveStudentPhone();
+      const tableBody = document.getElementById('documentsTableBody');
+
+      if (!tableBody) return;
+
+      if (!/^\d{10}$/.test(phone)) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">Enter phone number to load documents.</td></tr>';
+        return;
+      }
+
+      try {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">Loading documents...</td></tr>';
+        const response = await fetch(`${BACKEND_URL}/student/${phone}/documents`);
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:#dc2626;">${escapeHtml(data.message || 'Failed to load documents.')}</td></tr>`;
+          return;
+        }
+
+        const docs = data.documents || [];
+        if (!docs.length) {
+          tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No documents uploaded yet.</td></tr>';
+          return;
+        }
+
+        tableBody.innerHTML = docs.map(d => `
+          <tr>
+            <td>${escapeHtml(d.doc_name || 'Untitled')}</td>
+            <td>${escapeHtml(d.doc_type || 'Other')}</td>
+            <td>${escapeHtml(d.uploaded_at || 'N/A')}</td>
+            <td>${escapeHtml(d.status || 'pending')}</td>
+            <td>
+              <button class="btn" style="padding:6px 10px;font-size:.8rem;" onclick="viewDocument(${Number(d.id)})">View</button>
+              <button class="btn btn-secondary" style="padding:6px 10px;font-size:.8rem;" onclick="deleteDocument(${Number(d.id)})">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:#dc2626;">${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
         console.log('📡 Response status:', response.status);
         
         const data = await response.json();
@@ -1442,10 +1753,18 @@ async function loadAnnouncements()
     // Load student data from backend
     async function loadStudentData(){
       const currentStudentPhone = localStorage.getItem('currentStudentPhone');
-      
+
       if(!currentStudentPhone){
-        alert('Please login first!');
-        window.location.href='../auth.html';
+        document.getElementById('userName').textContent = 'Guest Student';
+        document.getElementById('displayName').textContent = 'Guest Student';
+        document.getElementById('displayName2').textContent = 'Guest Student';
+        document.getElementById('displayPhone').textContent = 'Add phone in Contract/Documents section';
+        document.getElementById('displayPhone2').textContent = 'N/A';
+        document.getElementById('displayEmail').textContent = 'guest@arpg.local';
+        document.getElementById('displayEmail2').textContent = 'guest@arpg.local';
+        // These elements live inside iframes — skip safely
+        // document.getElementById('contractPhone').value = '';
+        // document.getElementById('docPhone').value = '';
         return;
       }
       
@@ -1506,6 +1825,9 @@ async function loadAnnouncements()
       document.getElementById('profileCourse').textContent = s.course || 'N/A';
       document.getElementById('profileYear').textContent = (s.year || 'N/A') + ' Year';
       document.getElementById('profileRegDate').textContent = s.registrationDate;
+      // contractPhone / docPhone / monthlyRentContract / securityDeposit live inside
+      // iframes (contract.html / upload-documents.html) — cannot be accessed from parent.
+      // They read studentPhone directly from localStorage inside their own pages.
       await updatePaymentStatus(s.phone);
          } else {
       throw new Error(data.message || 'Failed to load data');
@@ -1520,6 +1842,31 @@ async function loadAnnouncements()
     }
   }
 }
+
+
+//  (function checkAuth() {
+//             const currentStudentPhone = localStorage.getItem('currentStudentPhone');
+            
+//             if (!currentStudentPhone) {
+//                 alert('⚠️ Please login first!');
+//                 window.location.href = '../auth.html';
+//                 return;
+//             }
+//         })();
+
+//         window.addEventListener('DOMContentLoaded', async () => {
+//             const currentStudentPhone = localStorage.getItem('currentStudentPhone');
+            
+//             if (!currentStudentPhone) {
+//                 alert('⚠️ Please login first!');
+//                 window.location.href = '../auth.html';
+//                 return;
+//             }
+
+//             await loadBillData(currentStudentPhone);
+//         });
+
+
 // ✅ NEW FUNCTION TO UPDATE PAYMENT STATUS DYNAMICALLY
 async function updatePaymentStatus(phone) {
   try {
@@ -1583,7 +1930,16 @@ async function updatePaymentStatus(phone) {
 async function loadPaymentData() {
   const currentStudentPhone = localStorage.getItem('currentStudentPhone');
   
-  if (!currentStudentPhone) return;
+  if (!currentStudentPhone) {
+    document.getElementById('paymentHistoryTable').innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center;padding:30px;color:#6b7280;">
+          Guest mode enabled. Login to see payment history.
+        </td>
+      </tr>
+    `;
+    return;
+  }
 
   try {
     const controller = new AbortController();
@@ -1687,9 +2043,15 @@ if (lastPayment && lastPayment.paymentDate) {
     // Initialize dashboard
     // Initialize dashboard
 window.addEventListener('DOMContentLoaded', async () => {
+  // Note: initContractSignaturePad / loadDocuments / loadContract reference elements
+  // that live inside iframes (contract.html / upload-documents.html).
+  // Each iframe page initializes itself independently.
+  // initContractSignaturePad(); -- skipped, canvas is in iframe
     await loadStudentData();
     await loadAnnouncements();
     await loadPaymentData();
+  // await loadDocuments(); -- skipped, documentsTableBody is in iframe
+  // await loadContract(); -- skipped, contractPhone etc. are in iframe
     
     
     // Refresh announcements every 30 seconds

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AR PG — Accommodation Agreement</title>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --brand: #1a3c5e; --brand-light: #e8f0f8; --accent: #e07b39;
+  --success: #1f7a5c; --success-light: #d4f0e7;
+  --border: #d1dde8; --text: #1a2533; --muted: #5a6a7a;
+  --bg: #f4f7fb; --white: #ffffff;
+  --radius: 10px; --shadow: 0 2px 16px rgba(26,60,94,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.7; }
+
+/* Header */
+.header { background: var(--brand); color: #fff; padding: 18px 32px; display: flex; align-items: center; gap: 16px; }
+.header-logo { width: 44px; height: 44px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #fff; flex-shrink: 0; letter-spacing: -1px; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header p  { font-size: 13px; opacity: .75; }
+
+/* Progress */
+.progress-bar { background: var(--brand-light); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; gap: 0; overflow-x: auto; }
+.step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); flex: 1; white-space: nowrap; }
+.step.active { color: var(--brand); font-weight: 600; }
+.step.done   { color: var(--success); }
+.step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--border); color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.step.active .step-num { background: var(--brand); color: #fff; }
+.step.done   .step-num { background: var(--success); color: #fff; }
+.step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; align-self: center; min-width: 20px; }
+
+/* Layout */
+.container { max-width: 860px; margin: 32px auto; padding: 0 16px 60px; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* Card */
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; overflow: hidden; }
+.card-header { background: var(--brand); color: #fff; padding: 24px 32px 18px; }
+.card-header .label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; opacity: .7; margin-bottom: 4px; }
+.card-header h2 { font-size: 21px; font-weight: 700; }
+.card-header .sub { font-size: 12px; opacity: .6; margin-top: 4px; }
+.card-body { padding: 28px 32px; }
+
+/* ── STEP 2: Form ── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 12px; font-weight: 700; color: var(--brand); text-transform: uppercase; letter-spacing: .5px; }
+.form-group input, .form-group select {
+  padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: 14px; font-family: inherit; color: var(--text); background: #fafcff;
+  outline: none; transition: border-color .15s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--brand); background: #fff; }
+.form-group input::placeholder { color: #aab4be; }
+.form-hint { font-size: 12px; color: var(--muted); }
+.field-row { display: flex; gap: 10px; }
+.field-row input { flex: 1; }
+
+/* ── Step 3: Contract doc ── */
+.info-grid { display: grid; grid-template-columns: 200px 1fr; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
+.info-label { background: var(--brand-light); color: var(--brand); font-size: 12px; font-weight: 700; padding: 10px 16px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; }
+.info-value { font-size: 14px; font-weight: 500; padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+.info-label:last-of-type, .info-value:last-of-type { border-bottom: none; }
+.section-title { font-size: 12px; font-weight: 700; color: var(--brand); text-transform: uppercase; letter-spacing: .8px; margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--brand-light); }
+.terms-list { list-style: none; display: flex; flex-direction: column; gap: 9px; counter-reset: clause; }
+.terms-list li { counter-increment: clause; display: flex; gap: 12px; font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+.terms-list li::before { content: counter(clause, decimal-leading-zero); font-size: 11px; font-weight: 700; color: var(--accent); flex-shrink: 0; padding-top: 2px; min-width: 24px; }
+.highlight-box { background: var(--brand-light); border-left: 4px solid var(--brand); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 13px; color: var(--brand); margin: 18px 0; display: flex; gap: 10px; align-items: flex-start; }
+
+/* Signature */
+.sig-section { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px 28px; margin-bottom: 24px; }
+.sig-section h3 { font-size: 15px; font-weight: 700; color: var(--brand); margin-bottom: 4px; }
+.sig-section p { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+.sig-tabs { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 16px; width: fit-content; }
+.sig-tab { padding: 8px 18px; font-size: 13px; font-weight: 500; cursor: pointer; background: none; border: none; color: var(--muted); transition: all .15s; }
+.sig-tab.active { background: var(--brand); color: #fff; }
+.sig-tab:not(.active):hover { background: var(--brand-light); color: var(--brand); }
+.canvas-wrap { position: relative; border: 2px dashed var(--border); border-radius: 8px; background: #fafcff; height: 160px; overflow: hidden; cursor: crosshair; }
+.canvas-wrap canvas { width: 100% !important; height: 100% !important; display: block; }
+.canvas-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; pointer-events: none; transition: opacity .2s; }
+.canvas-placeholder.hidden { opacity: 0; }
+.canvas-placeholder svg { opacity: .2; }
+.canvas-placeholder span { font-size: 13px; color: var(--muted); }
+.canvas-actions { display: flex; gap: 10px; margin-top: 10px; }
+.btn-ghost { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); background: none; font-size: 13px; cursor: pointer; color: var(--muted); transition: all .15s; }
+.btn-ghost:hover { background: var(--brand-light); color: var(--brand); border-color: var(--brand); }
+.type-sig-input { width: 100%; font-family: 'Brush Script MT', cursive; font-size: 34px; color: var(--brand); border: 2px dashed var(--border); border-radius: 8px; padding: 14px 18px; background: #fafcff; outline: none; text-align: center; }
+.type-sig-input:focus { border-color: var(--brand); }
+.type-preview { margin-top: 10px; min-height: 72px; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; background: white; font-family: 'Brush Script MT', cursive; font-size: 40px; color: #aab4be; padding: 10px; }
+
+/* Agree */
+.agree-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--brand-light); margin-top: 18px; cursor: pointer; }
+.agree-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand); flex-shrink: 0; margin-top: 3px; cursor: pointer; }
+.agree-row label { font-size: 13px; color: var(--brand); cursor: pointer; }
+
+/* Buttons */
+.btn-primary { background: var(--brand); color: #fff; border: none; border-radius: 8px; padding: 13px 36px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(26,60,94,0.22); }
+.btn-primary:hover { background: #153050; transform: translateY(-1px); }
+.btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-back { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 11px 24px; font-size: 14px; cursor: pointer; color: var(--muted); font-weight: 500; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-back:hover { border-color: var(--brand); color: var(--brand); }
+.action-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.submit-note { font-size: 12px; color: var(--muted); margin-top: 10px; text-align: center; }
+
+/* Validation */
+.form-group input.error { border-color: #c0392b; }
+.err-msg { font-size: 12px; color: #c0392b; display: none; }
+.err-msg.show { display: block; }
+
+/* Success */
+#screen-success { text-align: center; }
+.success-icon { width: 72px; height: 72px; background: var(--success-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 20px; }
+#screen-success h2 { font-size: 23px; font-weight: 700; color: var(--success); margin-bottom: 8px; }
+#screen-success p  { font-size: 14px; color: var(--muted); max-width: 420px; margin: 0 auto 24px; }
+.success-details { display: inline-flex; flex-direction: column; gap: 7px; background: var(--brand-light); border-radius: 8px; padding: 16px 28px; text-align: left; font-size: 13px; color: var(--brand); margin-bottom: 24px; }
+.success-details span { display: flex; gap: 8px; align-items: center; }
+.btn-download { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 12px 28px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.btn-download:hover { background: #c46a28; }
+
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full { grid-column: 1; }
+  .info-grid { grid-template-columns: 140px 1fr; }
+  .card-body { padding: 20px 18px; }
+  .header { padding: 14px 16px; }
+  .progress-bar { padding: 12px 16px; }
+  .step span { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">AR</div>
+  <div>
+    <h1>AR PG Accommodations</h1>
+    <p>Ensuring with Great PG Facilities</p>
+  </div>
+</div>
+
+<!-- Progress bar -->
+<div class="progress-bar">
+  <div class="step done" id="s1"><div class="step-num">✓</div><span>Admission submitted</span></div>
+  <div class="step-line"></div>
+  <div class="step active" id="s2"><div class="step-num">1</div><span>Student details</span></div>
+  <div class="step-line"></div>
+  <div class="step" id="s3"><div class="step-num">2</div><span>Sign contract</span></div>
+  <div class="step-line"></div>
+  <div class="step" id="s4"><div class="step-num">3</div><span>Move in</span></div>
+</div>
+
+<!-- ════════ SCREEN 2: Fill Details ════════ -->
+<div class="container screen active" id="screen-details">
+  <div class="card">
+    <div class="card-header">
+      <div class="label">Step 2 of 3</div>
+      <h2>Enter Your Admission Details</h2>
+      <div class="sub">These details will appear in your contract. Please fill them accurately.</div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+
+        <div class="form-group full">
+          <label>Full Name *</label>
+          <input type="text" id="f-name" placeholder="e.g. Rohit Dubey"/>
+          <span class="err-msg" id="e-name">Please enter your full name.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Father's Name *</label>
+          <input type="text" id="f-father" placeholder="e.g. Ramesh kumar"/>
+          <span class="err-msg" id="e-father">Required.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Phone Number *</label>
+          <input type="tel" id="f-phone" placeholder="10-digit mobile number" maxlength="10"/>
+          <span class="err-msg" id="e-phone">Enter a valid 10-digit number.</span>
+        </div>
+
+        <div class="form-group full">
+          <label>Email Address *</label>
+          <input type="email" id="f-email" placeholder="e.g. rohit@email.com"/>
+          <span class="err-msg" id="e-email">Enter a valid email address.</span>
+        </div>
+
+        <!-- <div class="form-group">
+          <label>Room Number *</label>
+          <select id="f-room">
+            <option value="">— Select room —</option>
+            <option>Room 101 — Single</option>
+            <option>Room 102 — Single</option>
+            <option>Room 201 — Double Sharing</option>
+            <option selected>Room 204 — Double Sharing</option>
+            <option>Room 301 — Triple Sharing</option>
+            <option>Room 302 — Triple Sharing</option>
+          </select>
+          <span class="err-msg" id="e-room">Please select a room.</span>
+        </div> -->
+
+        <div class="form-group">
+          <label>Room Type</label>
+          <select id="f-type">
+            <option>Double Sharing</option>
+            <option>Single</option>
+            <option>Triple Sharing</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Admission Date *</label>
+          <input type="date" id="f-from"/>
+          <span class="err-msg" id="e-from">Please select a date.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Duration (months) *</label>
+          <select id="f-duration">
+            <option value="6">6 months</option>
+            <option value="12" selected>12 months</option>
+            <option value="24">24 months</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Monthly Rent (₹) *</label>
+          <input type="number" id="f-rent" placeholder="e.g. 8500" value="8500"/>
+          <span class="err-msg" id="e-rent">Enter a valid rent amount.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Security Deposit (₹)</label>
+          <input type="number" id="f-deposit" placeholder="Auto-calculated" readonly style="background:#f0f4f8; color:var(--muted);"/>
+          <span class="form-hint">Auto = 2 months rent</span>
+        </div>
+
+        <div class="form-group full">
+          <label>Home Address *</label>
+          <input type="text" id="f-address" placeholder="Full permanent address"/>
+          <span class="err-msg" id="e-address">Please enter your address.</span>
+        </div>
+
+      </div>
+
+      <div style="margin-top:28px; text-align:right;">
+        <button class="btn-primary" onclick="goToSign()">
+          Continue to Sign Contract
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ SCREEN 3: Sign Contract ════════ -->
+<div class="container screen" id="screen-sign">
+
+  <!-- Contract Document -->
+  <div class="card">
+    <div class="card-header" style="text-align:center;">
+      <div class="label">Official Document — AR PG Accommodations</div>
+      <h2>AR PG Accommodation Agreement</h2>
+      <h3>PG OWNER - Ravi Shankar Gowda </h3>
+      <h4>ravishankargowda88@gmail.com</h4> <h4>📞+91-9738225350</h4>
+      <div class="sub" id="doc-id-line">Contract ID: AR-2025-00142 &nbsp;|&nbsp; Generated: <span id="gen-date"></span></div>
+    </div>
+    <div class="card-body">
+
+      <div class="section-title">Student Details</div>
+      <div class="info-grid">
+        <div class="info-label">Full Name</div>       <div class="info-value" id="d-name">—</div>
+        <div class="info-label">Father's Name</div>   <div class="info-value" id="d-father">—</div>
+        <div class="info-label">Phone</div>            <div class="info-value" id="d-phone">—</div>
+        <div class="info-label">Email</div>            <div class="info-value" id="d-email">—</div>
+        <!-- <div class="info-label">Room Number</div>      <div class="info-value" id="d-room">—</div> -->
+        <div class="info-label">Admission Date</div>   <div class="info-value" id="d-from">—</div>
+        <div class="info-label">Duration</div>         <div class="info-value" id="d-duration">—</div>
+        <div class="info-label">Monthly Rent</div>     <div class="info-value" id="d-rent">—</div>
+        <div class="info-label">Security Deposit</div> <div class="info-value" id="d-deposit">—</div>
+        <div class="info-label">Home Address</div>     <div class="info-value" id="d-address">—</div>
+      </div>
+
+      <div class="highlight-box">
+        <span style="font-size:18px; flex-shrink:0;">ℹ️</span>
+        <span>Please read all terms carefully. This is a legally binding agreement between you and AR PG Accommodations.</span>
+      </div>
+
+      <div class="section-title">Terms &amp; Conditions</div>
+      <ol class="terms-list">
+        <li>Rent must be paid by the 5th of each month. A late fee of ₹500 per week applies after this date.</li>
+        <li>The security deposit is refundable within 30 days of vacating, subject to deductions for damages beyond normal wear and tear.</li>
+        <li>A minimum of 30 days written notice is required before vacating the premises.</li>
+        <li>Visitors are allowed only in common areas between 8:00 AM and 9:00 PM. No overnight guests permitted.</li>
+        <li>The tenant is responsible for keeping their room and shared spaces clean at all times.</li>
+        <li>Any damage to the property must be reported immediately and will be charged to the responsible tenant.</li>
+        <li>Cooking is permitted only in the designated kitchen. Personal electric appliances in rooms are prohibited.</li>
+        <li>Noise must be kept to a minimum after 10:00 PM to respect fellow residents.</li>
+        <li>Management reserves the right to terminate this agreement with 15 days notice if terms are repeatedly violated.</li>
+        <li>This agreement is governed by the laws of the State of Madhya Pradesh, India.</li>
+      </ol>
+
+      <div class="section-title">Included Services</div>
+      <ol class="terms-list">
+        <li>Wi-Fi internet access (up to 50 Mbps, shared)</li>
+        <li>Daily housekeeping for common areas; weekly for rooms</li>
+        <li>24/7 water supply and power backup (generator during outages)</li>
+        <li>Two meals per day — breakfast &amp; dinner on weekdays</li>
+        <li>Laundry facility access twice a week</li>
+      </ol>
+
+    </div>
+  </div>
+
+  <!-- Signature box -->
+  <div class="sig-section">
+    <h3>Sign the Agreement</h3>
+    <p>Draw or type your signature below to finalise the contract.</p>
+
+    <div class="sig-tabs">
+      <button class="sig-tab active" onclick="switchTab('draw', this)">✍️ Draw signature</button>
+      <button class="sig-tab" onclick="switchTab('type', this)">⌨️ Type signature</button>
+    </div>
+
+    <div id="draw-area">
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="sig-canvas"></canvas>
+        <div class="canvas-placeholder" id="placeholder">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>Draw your signature here</span>
+        </div>
+      </div>
+      <div class="canvas-actions">
+        <button class="btn-ghost" onclick="clearSignature()">Clear</button>
+        <button class="btn-ghost" onclick="undoSignature()">Undo</button>
+      </div>
+    </div>
+
+    <div id="type-area" style="display:none;">
+      <input class="type-sig-input" id="type-input" placeholder="Type your full name…" oninput="updateTypePreview(this.value)"/>
+      <div class="type-preview" id="type-preview">Your signature will appear here</div>
+    </div>
+
+    <div class="agree-row" onclick="toggleAgree()">
+      <input type="checkbox" id="agree-check" onclick="event.stopPropagation(); updateSubmitBtn()"/>
+      <label for="agree-check">
+        I, <strong id="agree-name">the student</strong>, have read and fully understood all the terms in this agreement. I confirm this digital signature is legally equivalent to my handwritten signature and I agree to be bound by these terms.
+      </label>
+    </div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn-back" onclick="goBack()">
+      ← Edit Details
+    </button>
+    <div style="text-align:right;">
+      <button class="btn-primary" id="submit-btn" disabled onclick="submitContract()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Sign &amp; Submit Contract
+      </button>
+      <!-- <div class="submit-note">🔒 Secured with timestamp &amp; IP logging. Copy sent to your email.</div> -->
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════ SCREEN 4: Success ════════ -->
+<div class="container screen" id="screen-success">
+  <div class="card" style="padding:52px 36px; text-align:center;">
+    <div class="success-icon">✅</div>
+    <h2>Contract Signed Successfully!</h2>
+    <p>Your AR PG accommodation agreement has been signed and submitted. A copy has been sent to your registered email.</p>
+    <div class="success-details">
+      <span>📋 Contract ID: <strong>AR-2025-00142</strong></span>
+      <span>🕐 Signed at: <strong id="signed-time"></strong></span>
+      <span>📧 Email: <strong id="s-email">—</strong></span>
+      <span>🏠 Room: <strong id="s-room">—</strong></span>
+      <span>💰 Monthly Rent: <strong id="s-rent">—</strong></span>
+    </div>
+    <!-- <button class="btn-download" onclick="downloadContract()">⬇ Download Signed Contract (PDF)</button> -->
+  </div>
+</div>
+
+<script>
+// ── State ──
+let studentData = {};
+let pad, activeTab = 'draw';
+let contractPdfBlob = null;
+let contractPdfName = 'signed-contract.pdf';
+
+// ── Helpers ──
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('s'+i);
+    if (i < n)  { el.className = 'step done';   el.querySelector('.step-num').textContent = '✓'; }
+    if (i === n){ el.className = 'step active';  el.querySelector('.step-num').textContent = i; }
+    if (i > n)  { el.className = 'step';         el.querySelector('.step-num').textContent = i; }
+  }
+}
+
+// ── Auto-calc deposit when rent changes ──
+document.getElementById('f-rent').addEventListener('input', function() {
+  const r = parseInt(this.value) || 0;
+  document.getElementById('f-deposit').value = r ? '₹' + (r * 2).toLocaleString('en-IN') : '';
+});
+// init
+document.getElementById('f-deposit').value = '₹17,000';
+
+// Set today's date as min for admission date
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('f-from').min = today;
+document.getElementById('f-from').value = '2025-07-01';
+document.getElementById('gen-date').textContent = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+
+// ── Validation ──
+function validate() {
+  let ok = true;
+  const checks = [
+    ['f-name',    'e-name',    v => v.trim().length > 1],
+    ['f-father',  'e-father',  v => v.trim().length > 1],
+    ['f-phone',   'e-phone',   v => /^[6-9]\d{9}$/.test(v.trim())],
+    ['f-email',   'e-email',   v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())],
+    ['f-from',    'e-from',    v => v !== ''],
+    ['f-rent',    'e-rent',    v => parseInt(v) > 0],
+    ['f-address', 'e-address', v => v.trim().length > 5],
+  ];
+  checks.forEach(([fid, eid, fn]) => {
+    const el = document.getElementById(fid);
+    const err = document.getElementById(eid);
+    if (!fn(el.value)) { el.classList.add('error'); err.classList.add('show'); ok = false; }
+    else               { el.classList.remove('error'); err.classList.remove('show'); }
+  });
+  return ok;
+}
+
+// ── STEP 2 → 3 ──
+function goToSign() {
+  if (!validate()) return;
+
+  const fromDate = new Date(document.getElementById('f-from').value);
+  const months   = parseInt(document.getElementById('f-duration').value);
+  const toDate   = new Date(fromDate);
+  toDate.setMonth(toDate.getMonth() + months);
+  const fmt = d => d.toLocaleDateString('en-IN', {day:'numeric', month:'long', year:'numeric'});
+  const rent    = parseInt(document.getElementById('f-rent').value);
+  const deposit = rent * 2;
+
+  studentData = {
+    name:    document.getElementById('f-name').value.trim(),
+    father:  document.getElementById('f-father').value.trim(),
+    phone:   document.getElementById('f-phone').value.trim(),
+    email:   document.getElementById('f-email').value.trim(),
+    // room:    document.getElementById('f-room').value,
+    from:    fmt(fromDate),
+    to:      fmt(toDate),
+    months,
+    rent,
+    deposit,
+    address: document.getElementById('f-address').value.trim(),
+  };
+
+  // Populate contract view
+  document.getElementById('d-name').textContent    = studentData.name;
+  document.getElementById('d-father').textContent  = studentData.father;
+  document.getElementById('d-phone').textContent   = studentData.phone;
+  document.getElementById('d-email').textContent   = studentData.email;
+//   document.getElementById('d-room').textContent    = studentData.room;
+  document.getElementById('d-from').textContent    = studentData.from;
+  document.getElementById('d-duration').textContent = `${months} months (till ${studentData.to})`;
+  document.getElementById('d-rent').textContent    = '₹' + rent.toLocaleString('en-IN') + ' / month';
+  document.getElementById('d-deposit').textContent = '₹' + deposit.toLocaleString('en-IN') + ' (2 months)';
+  document.getElementById('d-address').textContent = studentData.address;
+  document.getElementById('agree-name').textContent = studentData.name;
+
+  // Reset signature
+  if (pad) { pad.clear(); document.getElementById('placeholder').classList.remove('hidden'); }
+  document.getElementById('agree-check').checked = false;
+  updateSubmitBtn();
+  contractPdfBlob = null;
+  contractPdfName = buildContractFileName(studentData.name);
+
+  show('screen-sign');
+  setStep(3);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+
+  // Init pad after layout
+  setTimeout(initPad, 80);
+}
+
+function goBack() {
+  show('screen-details');
+  setStep(2);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// ── Signature pad ──
+function initPad() {
+  const canvas = document.getElementById('sig-canvas');
+  const wrap   = document.getElementById('canvas-wrap');
+  canvas.width  = wrap.clientWidth  * window.devicePixelRatio;
+  canvas.height = wrap.clientHeight * window.devicePixelRatio;
+  canvas.getContext('2d').scale(window.devicePixelRatio, window.devicePixelRatio);
+  pad = new SignaturePad(canvas, { penColor: '#1a3c5e', minWidth: 1.5, maxWidth: 3, velocityFilterWeight: 0.7 });
+  pad.addEventListener('beginStroke', () => document.getElementById('placeholder').classList.add('hidden'));
+  pad.addEventListener('endStroke', updateSubmitBtn);
+}
+
+window.addEventListener('resize', () => {
+  if (!pad) return;
+  const data = pad.toData();
+  initPad();
+  if (data.length) { pad.fromData(data); document.getElementById('placeholder').classList.add('hidden'); }
+});
+
+function clearSignature() { pad.clear(); document.getElementById('placeholder').classList.remove('hidden'); updateSubmitBtn(); }
+function undoSignature()  { const d = pad.toData(); if (d.length) { d.pop(); pad.fromData(d); } if (pad.isEmpty()) document.getElementById('placeholder').classList.remove('hidden'); updateSubmitBtn(); }
+
+// ── Tab switch ──
+function switchTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.sig-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('draw-area').style.display = tab === 'draw' ? 'block' : 'none';
+  document.getElementById('type-area').style.display = tab === 'type' ? 'block' : 'none';
+  updateSubmitBtn();
+}
+
+function updateTypePreview(val) {
+  const p = document.getElementById('type-preview');
+  p.textContent = val.trim() || 'Your signature will appear here';
+  p.style.color = val.trim() ? '#1a3c5e' : '#aab4be';
+  updateSubmitBtn();
+}
+
+function toggleAgree() {
+  const cb = document.getElementById('agree-check');
+  cb.checked = !cb.checked;
+  updateSubmitBtn();
+}
+
+function hasSignature() {
+  if (activeTab === 'draw') return pad && !pad.isEmpty();
+  return document.getElementById('type-input').value.trim().length > 2;
+}
+
+function updateSubmitBtn() {
+  document.getElementById('submit-btn').disabled = !(document.getElementById('agree-check').checked && hasSignature());
+}
+
+function buildContractFileName(name) {
+  const safeName = (name || 'student')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `AR-PG-Signed-Contract-${safeName || 'student'}.pdf`;
+}
+
+function createSignatureImage() {
+  if (activeTab === 'draw') {
+    return pad && !pad.isEmpty() ? pad.toDataURL('image/png') : null;
+  }
+
+  const text = document.getElementById('type-input').value.trim();
+  if (!text) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#1a3c5e';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'italic 120px Brush Script MT, Segoe Script, cursive';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  return canvas.toDataURL('image/png');
+}
+
+function buildContractPdfBlob() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    throw new Error('PDF library failed to load.');
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentWidth = pageWidth - margin * 2;
+  const lineHeight = 6;
+  let y = margin;
+
+  const addWrappedText = (text, x, currentY, options = {}) => {
+    const fontSize = options.fontSize || 10;
+    const maxWidth = options.maxWidth || contentWidth;
+    doc.setFont('helvetica', options.bold ? 'bold' : 'normal');
+    doc.setFontSize(fontSize);
+    const lines = doc.splitTextToSize(text, maxWidth);
+    doc.text(lines, x, currentY);
+    return currentY + lines.length * (options.lineHeight || lineHeight);
+  };
+
+  const ensureSpace = (requiredHeight) => {
+    if (y + requiredHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  doc.setFillColor(26, 60, 94);
+  doc.rect(0, 0, pageWidth, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('AR PG Accommodations', margin, 12);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Signed Accommodation Agreement', margin, 20);
+
+  // PG Owner details at the top right
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text('PG Owner: Ravi Shankar Gowda', pageWidth - margin, 10, { align: 'right' });
+  doc.text('Email: ravishankargowda88@gmail.com', pageWidth - margin, 15, { align: 'right' });
+  doc.text('Mob: +91-9738225350', pageWidth - margin, 20, { align: 'right' });
+
+  doc.setTextColor(26, 37, 51);
+  y = 38;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text('PG Accommodation Agreement', margin, y);
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  y = addWrappedText('Contract ID: AR-2025-00142', margin, y, { fontSize: 10, bold: true });
+  y = addWrappedText(`Generated: ${document.getElementById('gen-date').textContent}`, margin, y);
+  y += 2;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('Student Details', margin, y);
+  y += 5;
+
+  const rows = [
+    ['Full Name', studentData.name],
+    ["Father's Name", studentData.father],
+    ['Phone', studentData.phone],
+    ['Email', studentData.email],
+    ['Admission Date', studentData.from],
+    ['Duration', `${studentData.months} months (till ${studentData.to})`],
+    ['Monthly Rent', ` ${studentData.rent.toLocaleString('en-IN')} / month`],
+    ['Security Deposit',  `${studentData.deposit.toLocaleString('en-IN')}`],
+    ['Home Address', studentData.address],
+  ];
+
+  doc.setFontSize(10);
+  rows.forEach(([label, value]) => {
+    const wrappedValue = doc.splitTextToSize(String(value), contentWidth - 42);
+    ensureSpace(Math.max(8, wrappedValue.length * 5) + 2);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${label}:`, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(wrappedValue, margin + 42, y);
+    y += Math.max(8, wrappedValue.length * 5);
+  });
+
+  y += 2;
+  ensureSpace(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('Terms & Conditions', margin, y);
+  y += 5;
+
+  const terms = [
+    'Rent must be paid by the Mentioned Date of each month. ',
+    'The security deposit is refundable within 30 days of vacating, subject to deductions for damages beyond normal wear and tear.',
+    'A minimum of 30 days written notice is required before vacating the premises.',
+    'Visitors are allowed only in common areas between 8:00 AM and 9:00 PM. No overnight guests permitted.',
+    'The PG is responsible for keeping their room and shared spaces clean at 2-3 times per week.',
+    'Any damage to the property must be reported immediately and will be charged to the responsible tenant.',
+    'Cooking is permitted only in the designated kitchen. Personal electric appliances in rooms are prohibited.',
+    'Noise must be kept to a minimum after 10:00 PM to respect fellow residents.',
+    'Management reserves the right to terminate this agreement with 15 days notice if terms are repeatedly violated.',
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setCharSpace(0);
+  terms.forEach((term, index) => {
+    const numberWidth = 8;
+    const bodyWidth = contentWidth - numberWidth;
+    const termLines = doc.splitTextToSize(term, bodyWidth);
+    ensureSpace(termLines.length * 5 + 2);
+    doc.text(`${index + 1}.`, margin, y);
+    termLines.forEach((line, lineIndex) => {
+      doc.text(line, margin + numberWidth, y + (lineIndex * 5));
+    });
+    y += termLines.length * 5 + 2;
+  });
+
+  y += 2;
+  ensureSpace(20);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('Signature', margin, y);
+  y += 6;
+
+  const signatureImage = createSignatureImage();
+  if (signatureImage) {
+    ensureSpace(42);
+    doc.setDrawColor(209, 221, 232);
+    doc.rect(margin, y, contentWidth, 30);
+    doc.addImage(signatureImage, 'PNG', margin + 3, y + 3, contentWidth - 6, 24, undefined, 'FAST');
+    y += 34;
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('No signature captured.', margin, y);
+    y += 8;
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(90, 106, 122);
+  doc.text(`Signed at: ${new Date().toLocaleString('en-IN')}`, margin, pageHeight - 14);
+  doc.text('Generated electronically by AR PG Accommodations', pageWidth - margin, pageHeight - 14, { align: 'right' });
+
+  return doc.output('blob');
+}
+
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Submit ──
+function submitContract() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Submitting…';
+
+  try {
+    contractPdfBlob = buildContractPdfBlob();
+  } catch (error) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Sign &amp; Submit Contract';
+    alert(error.message || 'Unable to generate the PDF.');
+    return;
+  }
+
+  downloadBlob(contractPdfBlob, contractPdfName);
+
+  // ── DJANGO INTEGRATION POINT ──
+  // fetch('/api/sign-contract/', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+  //   body: JSON.stringify({
+  //     contract_id: 'AR-2025-00142',
+  //     student: studentData,
+  //     signature: activeTab === 'draw' ? pad.toDataURL('image/png') : document.getElementById('type-input').value.trim(),
+  //     signed_at: new Date().toISOString(),
+  //   }),
+  // }).then(r => r.json()).then(d => { if (d.success) showSuccess(); });
+
+  setTimeout(showSuccess, 1400);
+}
+
+function showSuccess() {
+  document.getElementById('s-email').textContent = studentData.email;
+//   document.getElementById('s-room').textContent  = studentData.room;
+  document.getElementById('s-rent').textContent  = '₹' + studentData.rent.toLocaleString('en-IN') + ' / month';
+  document.getElementById('signed-time').textContent = new Date().toLocaleString('en-IN', {
+    day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+  show('screen-success');
+  setStep(4);
+  document.getElementById('s4').className = 'step active';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function downloadContract() {
+  if (!contractPdfBlob) {
+    try {
+      contractPdfBlob = buildContractPdfBlob();
+    } catch (error) {
+      alert(error.message || 'Unable to generate the PDF.');
+      return;
+    }
+  }
+
+  downloadBlob(contractPdfBlob, contractPdfName);
+}
+
+function getCookie(name) {
+  return document.cookie.split('; ').find(r => r.startsWith(name+'=')).split('=')[1];
+}
+</script>
+</body>
+</html>

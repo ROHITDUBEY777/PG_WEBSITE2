@@ -1,11 +1,11 @@
-﻿
-
 from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
 from concurrent.futures import ThreadPoolExecutor
 from psycopg2 import pool as psycopg2_pool
 import json
 import random
+import re
+import base64
 import bcrypt
 from datetime import datetime, timedelta
 import os
@@ -91,7 +91,7 @@ except ImportError:
 # CORS origins — reads from ALLOWED_ORIGINS env var, falls back to safe defaults
 _raw_origins = os.getenv(
     'ALLOWED_ORIGINS',
-    'https://myarpg.in,https://www.myarpg.in,http://localhost:5000,http://127.0.0.1:5000,https://pg-website2.onrender.com'
+    'https://myarpg.in,https://www.myarpg.in,http://localhost:5000,http://127.0.0.1:5000,https://pg-website2.onrender.com,http://127.0.0.1:5500'
 )
 ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(',') if o.strip()]
 print(f"✅ CORS allowed origins: {ALLOWED_ORIGINS}")
@@ -149,12 +149,86 @@ def init_db_pool():
                 password=os.getenv('DB_PASSWORD')
             )
             print("✅ Database pool initialized using individual DB env vars")
+        
+        # Ensure new feature tables exist
+        create_new_features_tables()
     except Exception as e:
         print(f"❌ Database pool init failed: {e}")
         DB_POOL = None
         raise
 
     return DB_POOL
+
+def create_new_features_tables():
+    """Ensure student_contracts and student_documents tables exist (and are up to date)."""
+    global DB_POOL
+    if DB_POOL is None:
+        print("⚠️ Database pool not initialized. Cannot create features tables.")
+        return
+    conn = None
+    try:
+        conn = DB_POOL.getconn()
+        cursor = conn.cursor()
+        
+        # Create student_contracts table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS student_contracts (
+                id SERIAL PRIMARY KEY,
+                student_phone VARCHAR(20) NOT NULL UNIQUE,
+                father_name VARCHAR(100) NOT NULL,
+                admission_date VARCHAR(50) NOT NULL,
+                duration_months INTEGER NOT NULL,
+                monthly_rent INTEGER NOT NULL,
+                security_deposit INTEGER NOT NULL,
+                home_address TEXT NOT NULL,
+                signature_data TEXT NOT NULL,
+                signed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''');
+        
+        # Create student_documents table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS student_documents (
+                id SERIAL PRIMARY KEY,
+                student_phone VARCHAR(20) NOT NULL,
+                doc_name VARCHAR(100) NOT NULL,
+                doc_type VARCHAR(50) NOT NULL,
+                doc_data TEXT NOT NULL,
+                file_name VARCHAR(255),
+                file_size BIGINT DEFAULT 0,
+                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status VARCHAR(20) DEFAULT 'pending'
+            )
+        ''');
+
+        # Backfill columns for tables created before file_name/file_size existed
+        cursor.execute('''
+            ALTER TABLE student_documents
+            ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)
+        ''')
+        cursor.execute('''
+            ALTER TABLE student_documents
+            ADD COLUMN IF NOT EXISTS file_size BIGINT DEFAULT 0
+        ''')
+        
+        conn.commit()
+        print("✅ New features tables checked/created successfully!")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"⚠️ Warning: Error creating new feature tables: {e}")
+    finally:
+        if conn and DB_POOL:
+            try:
+                DB_POOL.putconn(conn)
+            except Exception:
+                pass
+
+# Eagerly initialize DB pool at startup to eliminate lag on first request
+try:
+    init_db_pool()
+except Exception as _e:
+    print(f"⚠️ Eager database pool initialization skipped/failed: {_e}. (Will retry on first request)")
 
 EXECUTOR = ThreadPoolExecutor(max_workers=30)
 def get_db_connection():
@@ -215,11 +289,11 @@ twilio_client = None
 if TWILIO_AVAILABLE and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
     try:
         twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        print("âœ… Twilio SMS enabled!")
+        print("✅ Twilio SMS enabled!")
     except Exception as e:
-        print(f"âš ï¸ Twilio initialization failed: {str(e)}")
+        print(f"⚠️ Twilio initialization failed: {str(e)}")
 else:
-    print("âš ï¸ Twilio SMS disabled (not installed or credentials not found)")
+    print("⚠️ Twilio SMS disabled (not installed or credentials not found)")
 
 def send_email(recipient_email, subject, body, is_html=False):
     """Send email to recipient"""
@@ -242,10 +316,10 @@ def send_email(recipient_email, subject, body, is_html=False):
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
 
-        print(f"âœ… Email sent to {recipient_email}")
+        print(f"✅ Email sent to {recipient_email}")
         return True
     except Exception as e:
-        print(f"âŒ Error sending email: {str(e)}")
+        print(f"❌ Error sending email: {str(e)}")
         return False
 
 def send_payment_reminder_email(student_name, student_email, amount, due_date):
@@ -256,7 +330,7 @@ def send_payment_reminder_email(student_name, student_email, amount, due_date):
     <html>
         <body style="font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                <h2>ðŸ’³ Payment Reminder</h2>
+                <h2>💳 Payment Reminder</h2>
             </div>
             
             <div style="padding: 20px; background: #f9f9f9;">
@@ -266,16 +340,16 @@ def send_payment_reminder_email(student_name, student_email, amount, due_date):
                 
                 <div style="background: white; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0;">
                     <p><strong>Payment Details:</strong></p>
-                    <p>ðŸ’° <strong>Amount:</strong> â‚¹{amount}</p>
-                    <p>ðŸ“… <strong>Due Date:</strong> {due_date}</p>
-                    <p>ðŸ¢ <strong>PG Name:</strong> AR PG</p>
+                    <p>💰 <strong>Amount:</strong> ₹{amount}</p>
+                    <p>📅 <strong>Due Date:</strong> {due_date}</p>
+                    <p>🏢 <strong>PG Name:</strong> AR PG</p>
                 </div>
                 
                 <p><strong>Payment Methods:</strong></p>
                 <ul>
-                    <li>ðŸ’³ Online Payment (Credit/Debit Card, UPI)</li>
-                    <li>ðŸ¦ Bank Transfer</li>
-                    <li>ðŸ“± Mobile Wallet</li>
+                    <li>💳 Online Payment (Credit/Debit Card, UPI)</li>
+                    <li>🏦 Bank Transfer</li>
+                    <li>📱 Mobile Wallet</li>
                 </ul>
                 
                 <p>Please make the payment at your earliest convenience. You can login to your dashboard to pay online.</p>
@@ -302,7 +376,7 @@ def send_announcement_email(student_name, student_email, announcement_title, ann
     <html>
         <body style="font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                <h2>ðŸ“¢ {announcement_title}</h2>
+                <h2>📢 {announcement_title}</h2>
             </div>
             
             <div style="padding: 20px; background: #f9f9f9;">
@@ -330,7 +404,7 @@ def send_sms(phone_number, message):
     """Send SMS to student"""
     try:
         if not twilio_client:
-            print("âŒ Twilio not configured")
+            print("❌ Twilio not configured")
             return False
         
         # Format phone number (add country code if needed)
@@ -343,15 +417,15 @@ def send_sms(phone_number, message):
             body=message
         )
         
-        print(f"âœ… SMS sent to {phone_number}: {message_obj.sid}")
+        print(f"✅ SMS sent to {phone_number}: {message_obj.sid}")
         return True
     except Exception as e:
-        print(f"âŒ Error sending SMS: {str(e)}")
+        print(f"❌ Error sending SMS: {str(e)}")
         return False
 
 def send_payment_reminder_sms(student_name, phone_number, amount, due_date):
     """Send payment reminder SMS"""
-    message = f"Hi {student_name}, Your monthly rent of â‚¹{amount} is due on {due_date}. Please pay at your earliest. AR PG Management"
+    message = f"Hi {student_name}, Your monthly rent of ₹{amount} is due on {due_date}. Please pay at your earliest. AR PG Management"
     return send_sms(phone_number, message)
 
 def send_announcement_sms(student_name, phone_number, announcement):
@@ -363,19 +437,19 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
     """Notify owner when student makes payment"""
     try:
         # Send SMS to owner
-        sms_message = f"PAYMENT RECEIVED!\nStudent: {student_name}\nPhone: {student_phone}\nRoom: {room_number}\nAmount: â‚¹{amount}\nMethod: {payment_method}\nDate: {datetime.now().strftime('%d-%b-%Y %H:%M')}"
+        sms_message = f"PAYMENT RECEIVED!\nStudent: {student_name}\nPhone: {student_phone}\nRoom: {room_number}\nAmount: ₹{amount}\nMethod: {payment_method}\nDate: {datetime.now().strftime('%d-%b-%Y %H:%M')}"
         
         sms_sent = False
         if twilio_client and OWNER_PHONE:
             sms_sent = send_sms(OWNER_PHONE, sms_message)
         
         # Send email to owner
-        email_subject = f"ðŸ’° Payment Received - {student_name}"
+        email_subject = f"💰 Payment Received - {student_name}"
         email_body = f"""
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>ðŸ’° Payment Received!</h2>
+                    <h2>💰 Payment Received!</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -399,7 +473,7 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
                             </tr>
                             <tr style="background: #f9f9f9;">
                                 <td style="padding: 8px; font-weight: bold;">Amount Paid:</td>
-                                <td style="padding: 8px; color: #27ae60; font-weight: bold; font-size: 1.2em;">â‚¹{amount}</td>
+                                <td style="padding: 8px; color: #27ae60; font-weight: bold; font-size: 1.2em;">₹{amount}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 8px; font-weight: bold;">Payment Method:</td>
@@ -433,14 +507,14 @@ def notify_owner_payment(student_name, student_phone, room_number, amount, payme
             )
             email_sent = True
         if sms_sent or email_sent:
-            print(f"âœ… Owner notified about payment from {student_name}")
+            print(f"✅ Owner notified about payment from {student_name}")
             return True
         else:
-            print(f"âš ï¸  Failed to notify owner about payment")
+            print(f"⚠️  Failed to notify owner about payment")
             return False
             
     except Exception as e:
-        print(f"â Œ Error notifying owner: {str(e)}")
+        print(f"❌ Error notifying owner: {str(e)}")
         return False
 
 @app.before_request
@@ -456,111 +530,7 @@ def handle_preflight():
         response.headers['Access-Control-Max-Age'] = '3600'
         return response, 200
 
-# def init_db():
-#     """Initialize database with tables"""
-#     conn = get_db_connection()
-#     cursor = conn.cursor()
-#
-#     # Create students table
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS students (
-#             id SERIAL PRIMARY KEY,
-#             fullName TEXT NOT NULL,
-#             email TEXT NOT NULL,
-#             phone TEXT UNIQUE NOT NULL,
-#             college TEXT NOT NULL,
-#             course TEXT NOT NULL,
-#             year TEXT NOT NULL,
-#             roomType TEXT NOT NULL,
-#             password TEXT NOT NULL,
-#             registrationDate TEXT NOT NULL,
-#             status TEXT DEFAULT 'Active',
-#             roomNumber INTEGER,
-#             monthlyRent INTEGER DEFAULT 8000,
-#             paymentStatus TEXT DEFAULT 'pending'
-#         )
-#     ''')
-#
-#     # Create payments table
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS payments (
-#             id SERIAL PRIMARY KEY,
-#             studentPhone TEXT NOT NULL,
-#             amount INTEGER NOT NULL,
-#             dueDate TEXT NOT NULL,
-#             paymentDate TEXT,
-#             status TEXT DEFAULT 'pending',
-#             FOREIGN KEY (studentPhone) REFERENCES students(phone)
-#         )
-#     ''')
-#
-#     # Create messages table
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS messages (
-#             id SERIAL PRIMARY KEY,
-#             studentPhone TEXT NOT NULL,
-#             messageType TEXT NOT NULL,
-#             message TEXT NOT NULL,
-#             sentDate TEXT NOT NULL,
-#             FOREIGN KEY (studentPhone) REFERENCES students(phone)
-#         )
-#     ''')
-#
-#     # Create announcements table
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS announcements (
-#             id SERIAL PRIMARY KEY,
-#             title TEXT NOT NULL,
-#             message TEXT NOT NULL,
-#             type TEXT DEFAULT 'notice',
-#             priority TEXT DEFAULT 'low',
-#             date TEXT NOT NULL,
-#             createdBy TEXT DEFAULT 'Admin',
-#             createdAt TEXT NOT NULL
-#         )
-#     ''')
-#
-#     # Create table for storing reset codes
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS password_resets (
-#             id SERIAL PRIMARY KEY,
-#             email TEXT,
-#             code TEXT,
-#             expires_at TEXT
-#         )
-#     ''')
-#
-#     # Create inquiries table
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS inquiries (
-#             id SERIAL PRIMARY KEY,
-#             name TEXT NOT NULL,
-#             email TEXT NOT NULL,
-#             phone TEXT NOT NULL,
-#             room TEXT,
-#             message TEXT,
-#             date TEXT NOT NULL
-#         )
-#     ''')
-#
-#     cursor.execute('''
-#         CREATE TABLE IF NOT EXISTS current_bills (
-#             id SERIAL PRIMARY KEY,
-#             studentPhone TEXT NOT NULL,
-#             amount INTEGER DEFAULT 200,
-#             month TEXT NOT NULL,
-#             paymentDate TEXT NOT NULL,
-#             status TEXT DEFAULT 'paid',
-#             paymentProof TEXT,
-#             FOREIGN KEY (studentPhone) REFERENCES students(phone)
-#         )
-#     ''')
-#
-#     conn.commit()
-#     
-#     print("âœ… Database initialized!")
-
-# init_db() â€” removed: tables are managed directly in PostgreSQL
+# init_db() — removed: tables are managed directly in PostgreSQL
 
 # ==================== AUTHENTICATION ROUTES ====================
 
@@ -578,7 +548,6 @@ def signup():
         if cursor.fetchone():
             return jsonify({'success': False, 'message': 'Phone number already registered!'}), 400
         
-        # âœ… UPDATED: Now includes monthlyRent based on roomType
         # Determine rent based on room type
         room_type = data.get('roomType', 'Single')
         if room_type == 'Single':
@@ -590,7 +559,6 @@ def signup():
         else:
             monthly_rent = 8000  # Default
         
-        # âœ… UPDATED: Insert with monthlyRent
         cursor.execute('''
             INSERT INTO students (fullName, email, phone, college, course, year, roomType, password, registrationDate, monthlyRent)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -604,7 +572,7 @@ def signup():
             data['roomType'],
             hash_password(data['password']),
             datetime.now().strftime('%d-%b-%Y'),
-            monthly_rent  # âœ… NOW SAVING RENT!
+            monthly_rent
         ))
         
         conn.commit()
@@ -612,8 +580,6 @@ def signup():
         return jsonify({'success': True, 'message': 'Signup successful!'}), 201
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -625,7 +591,6 @@ def login():
         conn = get_db_connection()
         cursor = conn.cursor()
         data = request.json
-        # âœ… FIX: Accept both 'phone' and 'identifier'
         identifier = data.get('phone') or data.get('identifier') or data.get('email')
         password = data.get('password')
 
@@ -633,7 +598,6 @@ def login():
             return jsonify({'success': False, 'message': 'Email/Phone and password are required'}), 400
 
 
-        # Check using phone OR email
         cursor.execute('''
             SELECT * FROM students
                 WHERE phone = %s OR email = %s
@@ -661,8 +625,6 @@ def login():
             return jsonify({'success': False, 'message': 'Invalid email/phone or password!'}), 401
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -701,8 +663,6 @@ def get_student(phone):
             return jsonify({'success': False, 'message': 'Student not found!'}), 404
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -737,11 +697,304 @@ def get_student_payments(phone):
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+
+# ==================== STUDENT CONTRACT ROUTES ====================
+
+@app.route('/api/student/<phone>/contract', methods=['POST'])
+def save_student_contract(phone):
+    """Save student contract details and signature.
+    Matches the payload sent by contract.html / dashboard.html saveContract():
+    father_name, admission_date, duration_months, monthly_rent, security_deposit,
+    home_address, signature_data
+    """
+    try:
+        if not phone or not phone.isdigit() or len(phone) != 10:
+            return jsonify({'success': False, 'message': 'Invalid student phone number!'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verify student exists
+        cursor.execute('SELECT phone FROM students WHERE phone = %s', (phone,))
+        if not cursor.fetchone():
+            return jsonify({'success': False, 'message': 'Student not found!'}), 404
+            
+        data = request.get_json(silent=True) or {}
+        father_name = data.get('father_name')
+        admission_date = data.get('admission_date')
+        duration_months = int(data.get('duration_months', 12))
+        monthly_rent = int(data.get('monthly_rent', 8500))
+        security_deposit = int(data.get('security_deposit', 17000))
+        home_address = data.get('home_address')
+        signature_data = data.get('signature_data') # base64 string
+
+        if not all([father_name, admission_date, home_address, signature_data]):
+            return jsonify({'success': False, 'message': 'Missing required contract fields!'}), 400
+            
+        # Insert or update if exists (since student_phone is UNIQUE)
+        cursor.execute('''
+            INSERT INTO student_contracts 
+            (student_phone, father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data, signed_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            ON CONFLICT (student_phone) 
+            DO UPDATE SET 
+                father_name = EXCLUDED.father_name,
+                admission_date = EXCLUDED.admission_date,
+                duration_months = EXCLUDED.duration_months,
+                monthly_rent = EXCLUDED.monthly_rent,
+                security_deposit = EXCLUDED.security_deposit,
+                home_address = EXCLUDED.home_address,
+                signature_data = EXCLUDED.signature_data,
+                signed_at = NOW()
+        ''', (phone, father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data))
+
+        # Keep the students table in sync so /api/student/<phone> and admin views reflect the latest rent/deposit agreed in the contract
+        cursor.execute('''
+            UPDATE students SET monthlyRent = %s WHERE phone = %s
+        ''', (monthly_rent, phone))
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Contract signed and saved successfully!'}), 200
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print(f"❌ Error saving contract: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/student/<phone>/contract', methods=['GET'])
+def get_student_contract(phone):
+    """Fetch student contract details"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data, signed_at 
+            FROM student_contracts WHERE student_phone = %s
+        ''', (phone,))
+        
+        row = cursor.fetchone()
+        if row:
+            return jsonify({
+                'success': True,
+                'contract': {
+                    'father_name': row[0],
+                    'admission_date': row[1],
+                    'duration_months': row[2],
+                    'monthly_rent': row[3],
+                    'security_deposit': row[4],
+                    'home_address': row[5],
+                    'signature_data': row[6],
+                    'signed_at': row[7].strftime('%d-%b-%Y %I:%M %p') if row[7] else 'N/A'
+                }
+            }), 200
+        else:
+            return jsonify({'success': False, 'message': 'Contract not signed yet!'}), 404
+            
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ==================== STUDENT DOCUMENTS ROUTES ====================
+
+def parse_data_url(data_url):
+    """Parse a base64 data URL (e.g. 'data:image/png;base64,AAAA...') and
+    return (mime_type, file_extension, approximate_size_in_bytes).
+    Falls back gracefully if the string isn't a well-formed data URL.
+    """
+    if not data_url:
+        return None, 'dat', 0
+
+    match = re.match(r'^data:([^;,]+);base64,(.+)$', data_url, re.DOTALL)
+    if not match:
+        # Not a recognizable data URL — just estimate size from raw length
+        return None, 'dat', len(data_url)
+
+    mime = match.group(1).strip().lower()
+    b64data = match.group(2)
+
+    # Approximate decoded byte size from base64 length (accounting for padding)
+    padding = b64data.count('=')
+    size = max(0, int(len(b64data) * 3 / 4) - padding)
+
+    ext_map = {
+        'application/pdf': 'pdf',
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+    }
+    ext = ext_map.get(mime, 'dat')
+    return mime, ext, size
+
+
+def build_document_file_name(doc_name, ext):
+    """Build a safe, human-friendly file name from the document name + detected extension."""
+    base = (doc_name or 'document').strip()
+    base = re.sub(r'\s+', '_', base)
+    base = re.sub(r'[^A-Za-z0-9_\-\.]', '', base) or 'document'
+    return f"{base}.{ext or 'dat'}"
+
+
+@app.route('/api/student/<phone>/documents', methods=['POST'])
+def upload_student_document(phone):
+    """Upload a student document.
+    Accepts: doc_name, doc_type, doc_data (base64 data URL) — exactly what
+    upload-documents.html / dashboard.html's uploadDocument() sends.
+    Derives file_name & file_size server-side from the base64 payload so the
+    frontend document cards (PDF vs image icon, file size, file name) render correctly.
+    """
+    try:
+        if not phone or not phone.isdigit() or len(phone) != 10:
+            return jsonify({'success': False, 'message': 'Invalid student phone number!'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verify student exists
+        cursor.execute('SELECT phone FROM students WHERE phone = %s', (phone,))
+        if not cursor.fetchone():
+            return jsonify({'success': False, 'message': 'Student not found!'}), 404
+            
+        data = request.get_json(silent=True) or {}
+        doc_name = (data.get('doc_name') or '').strip()
+        doc_type = (data.get('doc_type') or '').strip()
+        doc_data = data.get('doc_data') # base64 file data URL or string
+        
+        if not all([doc_name, doc_type, doc_data]):
+            return jsonify({'success': False, 'message': 'Missing required document fields!'}), 400
+
+        # 10 MB upload limit, matching the frontend's validation
+        mime, ext, file_size = parse_data_url(doc_data)
+        max_size = 10 * 1024 * 1024
+        if file_size > max_size:
+            return jsonify({'success': False, 'message': 'File exceeds the 10 MB limit!'}), 400
+
+        file_name = build_document_file_name(doc_name, ext)
+
+        cursor.execute('''
+            INSERT INTO student_documents (student_phone, doc_name, doc_type, doc_data, file_name, file_size, uploaded_at, status)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW(), 'pending')
+            RETURNING id
+        ''', (phone, doc_name, doc_type, doc_data, file_name, file_size))
+
+        new_id = cursor.fetchone()[0]
+        conn.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Document uploaded successfully!',
+            'document': {
+                'id': new_id,
+                'doc_name': doc_name,
+                'doc_type': doc_type,
+                'file_name': file_name,
+                'file_size': file_size,
+                'status': 'pending'
+            }
+        }), 201
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print(f"❌ Error uploading document: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/student/<phone>/documents', methods=['GET'])
+def get_student_documents(phone):
+    """Fetch all uploaded documents for a student (metadata only, no base64 payload)."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, doc_name, doc_type, uploaded_at, status, file_name, file_size
+            FROM student_documents WHERE student_phone = %s
+            ORDER BY uploaded_at DESC
+        ''', (phone,))
+        
+        rows = cursor.fetchall()
+        documents = [
+            {
+                'id': row[0],
+                'doc_name': row[1],
+                'doc_type': row[2],
+                'uploaded_at': row[3].isoformat() if row[3] else None,
+                'uploaded_at_display': row[3].strftime('%d-%b-%Y %I:%M %p') if row[3] else 'N/A',
+                'status': row[4],
+                'file_name': row[5] or build_document_file_name(row[1], 'dat'),
+                'file_size': row[6] or 0
+            }
+            for row in rows
+        ]
+        
+        return jsonify({'success': True, 'documents': documents}), 200
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/student/<phone>/documents/<int:doc_id>', methods=['DELETE', 'OPTIONS'])
+def delete_student_document(phone, doc_id):
+    """Delete a student document"""
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verify document ownership
+        cursor.execute('SELECT id FROM student_documents WHERE id = %s AND student_phone = %s', (doc_id, phone))
+        if not cursor.fetchone():
+            return jsonify({'success': False, 'message': 'Document not found or unauthorized!'}), 404
+            
+        cursor.execute('DELETE FROM student_documents WHERE id = %s', (doc_id,))
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Document deleted successfully!'}), 200
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/student/<phone>/documents/<int:doc_id>/content', methods=['GET'])
+def get_document_content(phone, doc_id):
+    """Retrieve base64 content of document (used by View/Download buttons)."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT doc_data, doc_name, doc_type, file_name, file_size
+            FROM student_documents WHERE id = %s AND student_phone = %s
+        ''', (doc_id, phone))
+        row = cursor.fetchone()
+        
+        if row:
+            return jsonify({
+                'success': True,
+                'doc_data': row[0],
+                'doc_name': row[1],
+                'doc_type': row[2],
+                'file_name': row[3] or build_document_file_name(row[1], 'dat'),
+                'file_size': row[4] or 0
+            }), 200
+        else:
+            return jsonify({'success': False, 'message': 'Document not found!'}), 404
+            
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/api/config', methods=['GET'])
 def get_config():
     return jsonify({
@@ -782,8 +1035,6 @@ def get_student_messages(phone):
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -830,8 +1081,6 @@ def get_announcements():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -924,8 +1173,6 @@ def create_announcement():
         }), 201
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -946,8 +1193,6 @@ def delete_announcement(announcement_id):
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -981,8 +1226,6 @@ def update_announcement(announcement_id):
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -999,7 +1242,6 @@ def get_all_students():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # REPLACE WITH:
         cursor.execute('SELECT fullName, email, phone, college, roomNumber, paymentStatus, monthlyRent, roomType FROM students')
         students = cursor.fetchall()
         
@@ -1013,7 +1255,7 @@ def get_all_students():
                     'college': s[3],
                     'roomNumber': s[4],
                     'paymentStatus': s[5],
-                    'monthlyRent': s[6],   # â† ADD THIS
+                    'monthlyRent': s[6],
                     'roomType': s[7] 
                 }
                 for s in students
@@ -1021,8 +1263,6 @@ def get_all_students():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1063,7 +1303,7 @@ def admin_add_student():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>ðŸ  Welcome to AR PG!</h2>
+                    <h2>🏠 Welcome to AR PG!</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -1076,7 +1316,7 @@ def admin_add_student():
                         <p><strong>Temporary Password:</strong> <span style="font-size: 1.3em; color: #667eea; font-weight: bold;">{random_password}</span></p>
                     </div>
                     
-                    <p><strong>âš ï¸ Important:</strong></p>
+                    <p><strong>⚠️ Important:</strong></p>
                     <ul>
                         <li>Keep this password secure</li>
                         <li>You can change your password after first login</li>
@@ -1103,8 +1343,6 @@ def admin_add_student():
         }), 201
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1142,8 +1380,6 @@ def get_all_payments():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1202,7 +1438,6 @@ def mark_payment_paid():
         room_number = student[1] or 'N/A'
         amount = student[2]
         
-        # âœ… FIXED: Remove LIMIT from UPDATE query
         # Update existing pending payment row
         cursor.execute('''
             UPDATE payments 
@@ -1240,11 +1475,9 @@ def mark_payment_paid():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
-        print(f'âŒ Mark paid error: {str(e)}')
+        print(f'❌ Mark paid error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1282,8 +1515,6 @@ def create_payment_order():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1338,8 +1569,6 @@ def verify_payment():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1437,8 +1666,6 @@ def send_reminder():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1489,8 +1716,6 @@ def send_payment_reminder(phone):
             }), 500
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1529,10 +1754,6 @@ def send_sms_route():
         }), 200
     
     except Exception as e:
-
-    
-        if 'conn' in locals():
-            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     
 @app.route('/api/admin/update-student', methods=['POST'])
@@ -1576,7 +1797,7 @@ def update_student():
         
         conn.commit()
         
-        print(f"âœ… Student {data.get('fullName')} updated successfully")
+        print(f"✅ Student {data.get('fullName')} updated successfully")
         
         return jsonify({
             'success': True,
@@ -1584,11 +1805,9 @@ def update_student():
         })
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
-        print(f'âŒ Update student error: {str(e)}')
+        print(f'❌ Update student error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500 
@@ -1622,13 +1841,17 @@ def delete_student(phone):
         
         # Delete student's messages
         cursor.execute('DELETE FROM messages WHERE studentPhone = %s', (phone,))
+
+        # Delete student's contract & documents too, so deleting a student fully cleans up
+        cursor.execute('DELETE FROM student_contracts WHERE student_phone = %s', (phone,))
+        cursor.execute('DELETE FROM student_documents WHERE student_phone = %s', (phone,))
         
         # Delete the student
         cursor.execute('DELETE FROM students WHERE phone = %s', (phone,))
         
         conn.commit()
         
-        print(f"âœ… Student deleted: {student_name} ({phone})")
+        print(f"✅ Student deleted: {student_name} ({phone})")
         
         return jsonify({
             'success': True,
@@ -1636,11 +1859,9 @@ def delete_student(phone):
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
-        print(f"âŒ Error deleting student: {str(e)}")
+        print(f"❌ Error deleting student: {str(e)}")
         return jsonify({
             'success': False,
             'message': str(e)
@@ -1697,7 +1918,7 @@ def send_reset_code():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>ðŸ” Password Reset Request</h2>
+                    <h2>🔐 Password Reset Request</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -1710,7 +1931,7 @@ def send_reset_code():
                         <p style="color: #999; font-size: 0.9em;">This code is valid for 10 minutes.</p>
                     </div>
                     
-                    <p><strong>âš ï¸ Security tips:</strong></p>
+                    <p><strong>⚠️ Security tips:</strong></p>
                     <ul>
                         <li>Do not share this code with anyone.</li>
                         <li>If you didn't request this, you can ignore this email.</li>
@@ -1733,8 +1954,6 @@ def send_reset_code():
         }), 200
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1776,8 +1995,6 @@ def verify_reset_code():
         return jsonify({'success': True, 'message': 'Code verified successfully!'}), 200
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1826,8 +2043,6 @@ def reset_password():
         return jsonify({'success': True, 'message': 'Password reset successful!'}), 200
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1879,8 +2094,6 @@ def send_announcement():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1906,7 +2119,6 @@ def get_dashboard_stats():
         pending_students = cursor.fetchone()[0]
         
         # Total revenue
-       # Total revenue
         cursor.execute('SELECT SUM(monthlyRent) FROM students')
         total_revenue = cursor.fetchone()[0] or 0
 
@@ -1931,8 +2143,6 @@ def get_dashboard_stats():
         }), 200
     
     except Exception as e:
-
-    
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1942,7 +2152,7 @@ def get_dashboard_stats():
 @app.route('/api/test', methods=['GET'])
 def test():
     """Test if backend is running"""
-    return jsonify({'success': True, 'message': 'Backend is running! âœ…'}), 200
+    return jsonify({'success': True, 'message': 'Backend is running! ✅'}), 200
 
 # ==================== ERROR HANDLING ====================
 
@@ -1995,8 +2205,6 @@ def notify_payment():
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2037,14 +2245,12 @@ def handle_inquiry():
         return jsonify({'success': True, 'message': 'Inquiry submitted successfully!'}), 200
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# âœ… NEW route for Admin Dashboard to view inquiries
+# ✅ NEW route for Admin Dashboard to view inquiries
 @app.route('/api/inquiries', methods=['GET'])
 @require_admin
 def get_inquiries():
@@ -2072,7 +2278,6 @@ def get_inquiries():
 
         return jsonify({'success': True, 'inquiries': inquiries_list}), 200
     except Exception as e:
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2105,6 +2310,14 @@ def dashboard_page():
 def payment_page():
     return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'payment.html')
 
+@app.route('/student/contract.html')
+def contract_page():
+    return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'contract.html')
+
+@app.route('/student/upload-documents.html')
+def upload_documents_page():
+    return send_from_directory(os.path.join(PARENT_DIR, 'student'), 'upload-documents.html')
+
 @app.route('/index.html')
 @app.route('/')
 def index_page():
@@ -2125,7 +2338,7 @@ def announcement_page():
 
 
 
-# âœ… Serve static files (CSS, JS, images)
+# ✅ Serve static files (CSS, JS, images)
 @app.route('/<path:filename>')
 def serve_static(filename):
     return send_from_directory(PARENT_DIR, filename)
@@ -2146,8 +2359,6 @@ def admin_send_reset_code():
             return jsonify({'success': False, 'message': 'Email is required'}), 400
 
         # Check if this is an admin email (you can customize this check)
-        # For now, let's assume admin email should be in your system
-        # Lines 1831-1833 - Replace with:
         ADMIN_EMAIL_FROM_ENV = os.getenv('ADMIN_EMAIL')
         if email != ADMIN_EMAIL_FROM_ENV:
          return jsonify({'success': False, 'message': 'Not an admin email'}), 403
@@ -2176,7 +2387,7 @@ def admin_send_reset_code():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #1e1f47 0%, #3a2e8a 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>ðŸ” Admin Password Reset Request</h2>
+                    <h2>🔐 Admin Password Reset Request</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -2189,7 +2400,7 @@ def admin_send_reset_code():
                         <p style="color: #999; font-size: 0.9em;">This code is valid for 10 minutes.</p>
                     </div>
                     
-                    <p><strong>âš ï¸ Security Alert:</strong></p>
+                    <p><strong>⚠️ Security Alert:</strong></p>
                     <ul>
                         <li>Do not share this code with anyone.</li>
                         <li>If you didn't request this, ignore this email.</li>
@@ -2206,8 +2417,6 @@ def admin_send_reset_code():
         }), 200
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2251,8 +2460,6 @@ def admin_verify_reset_code():
         return jsonify({'success': True, 'message': 'Code verified successfully!'}), 200
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2293,8 +2500,6 @@ def admin_reset_password():
         return jsonify({'success': True, 'message': 'Admin password reset successful!'}), 200
 
     except Exception as e:
-
-
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2341,11 +2546,7 @@ def admin_login():
             }), 401
 
     except Exception as e:
-
-
-        if 'conn' in locals():
-            conn.rollback()
-        print(f"âŒ Error in admin login: {str(e)}")
+        print(f"❌ Error in admin login: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
     
     # ==================== CURRENT BILL ROUTES ====================
@@ -2375,8 +2576,6 @@ def get_current_bill_status(phone):
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2436,11 +2635,9 @@ def get_student_current_bills(phone):
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
-        print(f'âŒ Error fetching bills: {str(e)}')
+        print(f'❌ Error fetching bills: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2494,7 +2691,7 @@ def email_current_bill():
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
-                    <h2>âš¡ Current Bill - {month}</h2>
+                    <h2>⚡ Current Bill - {month}</h2>
                 </div>
                 
                 <div style="padding: 20px; background: #f9f9f9;">
@@ -2514,7 +2711,7 @@ def email_current_bill():
                             </tr>
                             <tr>
                                 <td style="padding: 8px; font-weight: bold;">Amount:</td>
-                                <td style="padding: 8px; color: #667eea; font-weight: bold; font-size: 1.2em;">â‚¹200</td>
+                                <td style="padding: 8px; color: #667eea; font-weight: bold; font-size: 1.2em;">₹200</td>
                             </tr>
                             <tr style="background: #f9f9f9;">
                                 <td style="padding: 8px; font-weight: bold;">Due Date:</td>
@@ -2533,9 +2730,9 @@ def email_current_bill():
                     
                     <p><strong>Payment Details:</strong></p>
                     <ul>
-                        <li>Monthly Electricity Charge: â‚¹200</li>
+                        <li>Monthly Electricity Charge: ₹200</li>
                         <li>Includes: Room lighting, fan, charging points</li>
-                        <li>Late Fee: â‚¹50 per day after due date</li>
+                        <li>Late Fee: ₹50 per day after due date</li>
                     </ul>
                     
                     <p>Login to your dashboard to pay online or view detailed bill.</p>
@@ -2564,11 +2761,9 @@ def email_current_bill():
             }), 500
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
-        print(f'âŒ Email error: {str(e)}')
+        print(f'❌ Email error: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2628,8 +2823,6 @@ def pay_current_bill():
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2689,8 +2882,6 @@ def upload_current_bill_proof():
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2741,14 +2932,11 @@ def verify_current_bill_payment(phone, month):
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     
     # ==================== ADD THIS TO YOUR app.py ====================
-# Add this route around line 1350 (after the other current-bill routes)
 
 @app.route('/api/current-bills/pending', methods=['GET'])
 @require_admin
@@ -2787,179 +2975,20 @@ def get_pending_current_bills():
         }), 200
         
     except Exception as e:
-
-        
         if 'conn' in locals():
             conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
-    # ==================== RAZORPAY CURRENT BILL ROUTES ====================
 
-@app.route('/api/current-bill/create-razorpay-order', methods=['POST'])
-def create_razorpay_order_current_bill():
-    """Create Razorpay order for current bill payment"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        if not razorpay_client:
-            return jsonify({
-                'success': False,
-                'message': 'Razorpay not configured. Please use UPI payment option.'
-            }), 400
-        
-        data = request.json
-        phone = data.get('phone')
-        amount = data.get('amount', 200)  # Current bill amount
-        
-        if not phone:
-            return jsonify({'success': False, 'message': 'Phone required'}), 400
-        
-        
-        # Get student details
-        cursor.execute('SELECT fullName, email, roomNumber FROM students WHERE phone = %s', (phone,))
-        student = cursor.fetchone()
-        
-        if not student:
-            return jsonify({'success': False, 'message': 'Student not found'}), 404
-        
-        student_name = student[0]
-        student_email = student[1]
-        room_number = student[2] or 'N/A'
-        
-        # Create Razorpay order
-        order_data = {
-            'amount': amount * 100,  # Razorpay expects amount in paise (â‚¹200 = 20000 paise)
-            'currency': 'INR',
-            'receipt': f'current_bill_{phone}_{int(datetime.now().timestamp())}',
-            'notes': {
-                'student_name': student_name,
-                'student_phone': phone,
-                'room_number': room_number,
-                'bill_type': 'current_bill',
-                'month': datetime.now().strftime('%b-%Y')
-            }
-        }
-        
-        razorpay_order = razorpay_client.order.create(data=order_data)
-        
-        return jsonify({
-            'success': True,
-            'order_id': razorpay_order['id'],
-            'amount': amount,
-            'currency': 'INR',
-            'key_id': RAZORPAY_KEY_ID,
-            'student_name': student_name,
-            'student_email': student_email,
-            'student_phone': phone
-        }), 200
-        
-    except Exception as e:
-
-        
-        if 'conn' in locals():
-            conn.rollback()
-        print(f'âŒ Razorpay order creation error: {str(e)}')
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/api/current-bill/verify-razorpay-payment', methods=['POST'])
-def verify_razorpay_current_bill_payment():
-    """Verify Razorpay payment signature and record payment"""
-    try:
-        if not razorpay_client:
-            return jsonify({'success': False, 'message': 'Razorpay not configured'}), 400
-        
-        data = request.json
-        phone = data.get('phone')
-        razorpay_order_id = data.get('razorpay_order_id')
-        razorpay_payment_id = data.get('razorpay_payment_id')
-        razorpay_signature = data.get('razorpay_signature')
-        
-        if not all([phone, razorpay_order_id, razorpay_payment_id, razorpay_signature]):
-            return jsonify({'success': False, 'message': 'Missing payment details'}), 400
-        
-        # Verify payment signature
-        try:
-            razorpay_client.utility.verify_payment_signature({
-                'razorpay_order_id': razorpay_order_id,
-                'razorpay_payment_id': razorpay_payment_id,
-                'razorpay_signature': razorpay_signature
-            })
-        except Exception as e:
-           if 'conn' in locals():
-            conn.rollback()
-            print(f'âŒ Payment signature verification failed: {str(e)}')
-            return jsonify({
-                'success': False,
-                'message': 'Payment verification failed. Please contact support.'
-            }), 400
-        
-        # Payment verified! Record in database
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Get student details
-        cursor.execute('SELECT fullName, roomNumber FROM students WHERE phone = %s', (phone,))
-        student = cursor.fetchone()
-        
-        if not student:
-            return jsonify({'success': False, 'message': 'Student not found'}), 404
-        
-        student_name = student[0]
-        room_number = student[1] or 'N/A'
-        
-        month = datetime.now().strftime('%b-%Y')
-        
-        # Check if already paid
-        cursor.execute('''
-            SELECT * FROM current_bills 
-            WHERE studentPhone = %s AND month = %s
-        ''', (phone, month))
-        
-        if cursor.fetchone():
-            return jsonify({
-                'success': False,
-                'message': 'Bill already paid for this month'
-            }), 400
-        
-        # Record payment as PAID (Razorpay verified!)
-        cursor.execute('''
-            INSERT INTO current_bills (studentPhone, amount, month, paymentDate, status)
-            VALUES (%s, %s, %s, %s, %s)
-        ''', (phone, 200, month, datetime.now().strftime('%d-%b-%Y'), 'paid'))
-        
-        conn.commit()
-        
-        # Notify owner
-        notify_owner_payment(student_name, phone, room_number, 200, 'Current Bill (Razorpay - Verified)')
-        
-        return jsonify({
-            'success': True,
-            'message': 'Payment verified and recorded successfully!',
-            'payment_id': razorpay_payment_id
-        }), 200
-        
-    except Exception as e:
-
-        
-        if 'conn' in locals():
-            conn.rollback()
-        print(f'âŒ Razorpay verification error: {str(e)}')
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
 if __name__ == '__main__':
-    print("ðŸš€ Starting AR PG Backend Server...")
-    print("ðŸ“ Server running at: http://localhost:5000")
-    print("ðŸ”— DB Pool: min=2, max=20 connections (supports 500+ concurrent users)")
-    print("ðŸ›‘ Press CTRL+C to stop")
+    print("🚀 Starting AR PG Backend Server...")
+    print("📍 Server running at: http://localhost:5000")
+    print("🔗 DB Pool: min=2, max=20 connections (supports 500+ concurrent users)")
+    print("🛑 Press CTRL+C to stop")
     if DEBUG_MODE:
-        print("âš ï¸ Running in DEBUG mode")
+        print("⚠️ Running in DEBUG mode")
         app.run(debug=True, host='0.0.0.0', port=5000)
     else:
-        print("âœ… Running in PRODUCTION mode")
+        print("✅ Running in PRODUCTION mode")
         from waitress import serve
         port = int(os.environ.get('PORT', 10000))
         serve(app, host='0.0.0.0', port=port, threads=20)
-        
