@@ -1844,27 +1844,27 @@ async function loadAnnouncements()
 }
 
 
-//  (function checkAuth() {
-//             const currentStudentPhone = localStorage.getItem('currentStudentPhone');
+ (function checkAuth() {
+            const currentStudentPhone = localStorage.getItem('currentStudentPhone');
             
-//             if (!currentStudentPhone) {
-//                 alert('⚠️ Please login first!');
-//                 window.location.href = '../auth.html';
-//                 return;
-//             }
-//         })();
+            if (!currentStudentPhone) {
+                alert('⚠️ Please login first!');
+                window.location.href = '../auth.html';
+                return;
+            }
+        })();
 
-//         window.addEventListener('DOMContentLoaded', async () => {
-//             const currentStudentPhone = localStorage.getItem('currentStudentPhone');
+        window.addEventListener('DOMContentLoaded', async () => {
+            const currentStudentPhone = localStorage.getItem('currentStudentPhone');
             
-//             if (!currentStudentPhone) {
-//                 alert('⚠️ Please login first!');
-//                 window.location.href = '../auth.html';
-//                 return;
-//             }
+            if (!currentStudentPhone) {
+                alert('⚠️ Please login first!');
+                window.location.href = '../auth.html';
+                return;
+            }
 
-//             await loadBillData(currentStudentPhone);
-//         });
+            await loadBillData(currentStudentPhone);
+        });
 
 
 // ✅ NEW FUNCTION TO UPDATE PAYMENT STATUS DYNAMICALLY

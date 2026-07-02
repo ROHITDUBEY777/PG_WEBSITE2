@@ -734,21 +734,20 @@ def save_student_contract(phone):
         if not all([father_name, admission_date, home_address, signature_data]):
             return jsonify({'success': False, 'message': 'Missing required contract fields!'}), 400
             
-        # Insert or update if exists (since student_phone is UNIQUE)
+        # Enforce one-time contract submission per student.
+        # Any edits must happen by deleting the previous contract first.
+        cursor.execute('SELECT id FROM student_contracts WHERE student_phone = %s', (phone,))
+        existing_contract = cursor.fetchone()
+        if existing_contract:
+            return jsonify({
+                'success': False,
+                'message': 'Contract already exists. Please delete the previous contract before making changes.'
+            }), 409
+
         cursor.execute('''
             INSERT INTO student_contracts 
             (student_phone, father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data, signed_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            ON CONFLICT (student_phone) 
-            DO UPDATE SET 
-                father_name = EXCLUDED.father_name,
-                admission_date = EXCLUDED.admission_date,
-                duration_months = EXCLUDED.duration_months,
-                monthly_rent = EXCLUDED.monthly_rent,
-                security_deposit = EXCLUDED.security_deposit,
-                home_address = EXCLUDED.home_address,
-                signature_data = EXCLUDED.signature_data,
-                signed_at = NOW()
         ''', (phone, father_name, admission_date, duration_months, monthly_rent, security_deposit, home_address, signature_data))
 
         # Keep the students table in sync so /api/student/<phone> and admin views reflect the latest rent/deposit agreed in the contract
@@ -763,6 +762,32 @@ def save_student_contract(phone):
         if 'conn' in locals():
             conn.rollback()
         print(f"❌ Error saving contract: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/student/<phone>/contract', methods=['DELETE'])
+def delete_student_contract(phone):
+    """Delete an existing student contract so a corrected one can be submitted."""
+    try:
+        if not phone or not phone.isdigit() or len(phone) != 10:
+            return jsonify({'success': False, 'message': 'Invalid student phone number!'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM student_contracts WHERE student_phone = %s', (phone,))
+        existing_contract = cursor.fetchone()
+        if not existing_contract:
+            return jsonify({'success': False, 'message': 'No contract found to delete.'}), 404
+
+        cursor.execute('DELETE FROM student_contracts WHERE student_phone = %s', (phone,))
+        conn.commit()
+
+        return jsonify({'success': True, 'message': 'Previous contract deleted successfully.'}), 200
+
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/student/<phone>/contract', methods=['GET'])
@@ -1262,6 +1287,212 @@ def get_all_students():
             ]
         }), 200
     
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/contracts', methods=['GET'])
+@require_admin
+def get_admin_contracts():
+    """Get all student contracts for admin dashboard (list view)."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                c.student_phone,
+                s.fullName,
+                s.email,
+                c.father_name,
+                c.admission_date,
+                c.duration_months,
+                c.monthly_rent,
+                c.security_deposit,
+                c.home_address,
+                c.signed_at
+            FROM student_contracts c
+            LEFT JOIN students s ON s.phone = c.student_phone
+            ORDER BY c.signed_at DESC NULLS LAST
+        ''')
+
+        rows = cursor.fetchall()
+        contracts = [
+            {
+                'student_phone': row[0],
+                'student_name': row[1] or 'N/A',
+                'student_email': row[2] or 'N/A',
+                'father_name': row[3],
+                'admission_date': row[4],
+                'duration_months': row[5],
+                'monthly_rent': row[6],
+                'security_deposit': row[7],
+                'home_address': row[8],
+                'signed_at': row[9].isoformat() if row[9] else None,
+                'signed_at_display': row[9].strftime('%d-%b-%Y %I:%M %p') if row[9] else 'N/A'
+            }
+            for row in rows
+        ]
+
+        return jsonify({'success': True, 'contracts': contracts}), 200
+
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/contracts/<phone>', methods=['GET'])
+@require_admin
+def get_admin_contract_detail(phone):
+    """Get full contract details (including signature) for one student."""
+    try:
+        if not phone or not phone.isdigit() or len(phone) != 10:
+            return jsonify({'success': False, 'message': 'Invalid student phone number!'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                c.student_phone,
+                s.fullName,
+                s.email,
+                c.father_name,
+                c.admission_date,
+                c.duration_months,
+                c.monthly_rent,
+                c.security_deposit,
+                c.home_address,
+                c.signature_data,
+                c.signed_at
+            FROM student_contracts c
+            LEFT JOIN students s ON s.phone = c.student_phone
+            WHERE c.student_phone = %s
+            LIMIT 1
+        ''', (phone,))
+
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'success': False, 'message': 'Contract not found!'}), 404
+
+        return jsonify({
+            'success': True,
+            'contract': {
+                'student_phone': row[0],
+                'student_name': row[1] or 'N/A',
+                'student_email': row[2] or 'N/A',
+                'father_name': row[3],
+                'admission_date': row[4],
+                'duration_months': row[5],
+                'monthly_rent': row[6],
+                'security_deposit': row[7],
+                'home_address': row[8],
+                'signature_data': row[9],
+                'signed_at': row[10].isoformat() if row[10] else None,
+                'signed_at_display': row[10].strftime('%d-%b-%Y %I:%M %p') if row[10] else 'N/A'
+            }
+        }), 200
+
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/documents', methods=['GET'])
+@require_admin
+def get_admin_documents():
+    """Get all uploaded student documents for admin dashboard."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                d.id,
+                d.student_phone,
+                s.fullName,
+                s.email,
+                d.doc_name,
+                d.doc_type,
+                d.uploaded_at,
+                d.status,
+                d.file_name,
+                d.file_size
+            FROM student_documents d
+            LEFT JOIN students s ON s.phone = d.student_phone
+            ORDER BY d.uploaded_at DESC NULLS LAST
+        ''')
+
+        rows = cursor.fetchall()
+        documents = [
+            {
+                'id': row[0],
+                'student_phone': row[1],
+                'student_name': row[2] or 'N/A',
+                'student_email': row[3] or 'N/A',
+                'doc_name': row[4],
+                'doc_type': row[5],
+                'uploaded_at': row[6].isoformat() if row[6] else None,
+                'uploaded_at_display': row[6].strftime('%d-%b-%Y %I:%M %p') if row[6] else 'N/A',
+                'status': row[7] or 'pending',
+                'file_name': row[8] or build_document_file_name(row[4], 'dat'),
+                'file_size': row[9] or 0
+            }
+            for row in rows
+        ]
+
+        return jsonify({'success': True, 'documents': documents}), 200
+
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/documents/<int:doc_id>/content', methods=['GET'])
+@require_admin
+def get_admin_document_content(doc_id):
+    """Get base64 content of a student document by document id (admin only)."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                d.doc_data,
+                d.doc_name,
+                d.doc_type,
+                d.file_name,
+                d.file_size,
+                d.student_phone,
+                s.fullName
+            FROM student_documents d
+            LEFT JOIN students s ON s.phone = d.student_phone
+            WHERE d.id = %s
+            LIMIT 1
+        ''', (doc_id,))
+
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'success': False, 'message': 'Document not found!'}), 404
+
+        return jsonify({
+            'success': True,
+            'document': {
+                'doc_data': row[0],
+                'doc_name': row[1],
+                'doc_type': row[2],
+                'file_name': row[3] or build_document_file_name(row[1], 'dat'),
+                'file_size': row[4] or 0,
+                'student_phone': row[5],
+                'student_name': row[6] or 'N/A'
+            }
+        }), 200
+
     except Exception as e:
         if 'conn' in locals():
             conn.rollback()
