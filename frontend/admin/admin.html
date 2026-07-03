@@ -882,6 +882,8 @@
                         Reminders</a></li>
                 <li><a href="announcement.html">📰 Announcements</a></li>
                 <li><a href="#current-bills" class="nav-link" onclick="showSection('current-bills', event)">⚡ Current Bills</a></li>
+                <li><a href="#contracts" class="nav-link" onclick="showSection('contracts', event)">📄 Contracts</a></li>
+                <li><a href="#documents" class="nav-link" onclick="showSection('documents', event)">📁 Student Documents</a></li>
 
                 <li><a href="#reports" class="nav-link" onclick="showSection('reports', event)">📈 Reports</a></li>
                 <li> <a href="#inquiries" class="nav-link" onclick="showSection('inquiries', event)"> 📬 Inquiries</a> </li>
@@ -1166,6 +1168,83 @@
         </div>
     </div>
 </div>
+
+            <div id="contracts" class="section">
+                <h1 class="page-title">Student Contracts</h1>
+
+                <div class="card">
+                    <div class="card-title">
+                        Uploaded Contracts
+                        <button class="btn btn-small" onclick="loadAdminContracts()">⟳ Refresh</button>
+                    </div>
+
+                    <div class="search-container" style="margin-bottom: 1rem;">
+                        <input type="text" id="contractsSearch" placeholder="🔍 Search by name, phone, email..." onkeyup="filterAdminContracts()">
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th>Father Name</th>
+                                    <th>Monthly Rent</th>
+                                    <th>Signed At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contractsTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">
+                                        Open the Contracts section to load data.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="documents" class="section">
+                <h1 class="page-title">Student Uploaded Documents</h1>
+
+                <div class="card">
+                    <div class="card-title">
+                        Uploaded Documents
+                        <button class="btn btn-small" onclick="loadAdminDocuments()">⟳ Refresh</button>
+                    </div>
+
+                    <div class="search-container" style="margin-bottom: 1rem;">
+                        <input type="text" id="documentsSearch" placeholder="🔍 Search by name, phone, doc name, type..." onkeyup="filterAdminDocuments()">
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Phone</th>
+                                    <th>Document Name</th>
+                                    <th>Type</th>
+                                    <th>File Name</th>
+                                    <th>Uploaded At</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentsTableBodyAdmin">
+                                <tr>
+                                    <td colspan="8" style="text-align:center; color:var(--text-light); padding:2rem;">
+                                        Open the Student Documents section to load data.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
             <!-- Reports Section -->
             <div id="reports" class="section">
                 <h1 class="page-title">Reports & Analytics</h1>
@@ -1331,6 +1410,8 @@ console.log('✅ Using BACKEND_URL:', BACKEND_URL);
         let adminData = {
             students: []
         };
+        let adminContracts = [];
+        let adminDocuments = [];
 
         // Check if admin is logged in
         // Check if admin is logged in
@@ -1873,6 +1954,12 @@ function updateSelectedCount() {
     if (sectionId === 'current-bills') {
         loadCurrentBills();
     }
+    if (sectionId === 'contracts') {
+        loadAdminContracts();
+    }
+    if (sectionId === 'documents') {
+        loadAdminDocuments();
+    }
 }
 
 
@@ -2247,6 +2334,255 @@ function exportToExcel() {
     a.href = url;
     a.download = `students_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+}
+
+async function loadAdminContracts() {
+    const tbody = document.getElementById('contractsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">Loading contracts...</td>
+        </tr>
+    `;
+
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/admin/contracts', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        adminContracts = data.contracts || [];
+        renderContractsTable(adminContracts);
+    } catch (error) {
+        console.error('Error loading admin contracts:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; color:var(--danger-color); padding:2rem;">${escapeHtml(error.message || 'Failed to load contracts')}</td>
+            </tr>
+        `;
+    }
+}
+
+function filterAdminContracts() {
+    const q = (document.getElementById('contractsSearch')?.value || '').trim().toLowerCase();
+    if (!q) {
+        renderContractsTable(adminContracts);
+        return;
+    }
+
+    const filtered = adminContracts.filter(c => {
+        return String(c.student_name || '').toLowerCase().includes(q) ||
+            String(c.student_phone || '').toLowerCase().includes(q) ||
+            String(c.student_email || '').toLowerCase().includes(q) ||
+            String(c.father_name || '').toLowerCase().includes(q);
+    });
+
+    renderContractsTable(filtered);
+}
+
+function renderContractsTable(contracts) {
+    const tbody = document.getElementById('contractsTableBody');
+    if (!tbody) return;
+
+    if (!contracts || contracts.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; color:var(--text-light); padding:2rem;">No contracts found.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = contracts.map(c => `
+        <tr>
+            <td>${escapeHtml(c.student_name || 'N/A')}</td>
+            <td>${escapeHtml(c.student_phone || 'N/A')}</td>
+            <td>${escapeHtml(c.student_email || 'N/A')}</td>
+            <td>${escapeHtml(c.father_name || 'N/A')}</td>
+            <td>Rs ${Number(c.monthly_rent || 0).toLocaleString('en-IN')}</td>
+            <td>${escapeHtml(c.signed_at_display || 'N/A')}</td>
+            <td>
+                <button class="btn btn-small" onclick="viewAdminContract('${escapeHtml(c.student_phone || '')}')">View Contract</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function viewAdminContract(phone) {
+    if (!phone) {
+        alert('Invalid student phone for contract view.');
+        return;
+    }
+
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/admin/contracts/' + phone, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.contract) {
+            throw new Error(data.message || 'Unable to load contract details.');
+        }
+
+        const c = data.contract;
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 16px;';
+        modal.innerHTML = `
+            <div style="background: white; width: min(900px, 96vw); max-height: 92vh; overflow: auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+                <div style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <h3 style="margin:0; color:#111827;">Student Contract Details</h3>
+                    <button onclick="this.closest('div[style]').parentElement.parentElement.remove()" style="background:#ef4444; color:white; border:none; border-radius:8px; padding:8px 12px; cursor:pointer;">Close</button>
+                </div>
+                <div style="padding: 18px 20px; color:#1f2937; line-height:1.6;">
+                    <p><strong>Name:</strong> ${escapeHtml(c.student_name || 'N/A')}</p>
+                    <p><strong>Phone:</strong> ${escapeHtml(c.student_phone || 'N/A')}</p>
+                    <p><strong>Email:</strong> ${escapeHtml(c.student_email || 'N/A')}</p>
+                    <p><strong>Father Name:</strong> ${escapeHtml(c.father_name || 'N/A')}</p>
+                    <p><strong>Admission Date:</strong> ${escapeHtml(c.admission_date || 'N/A')}</p>
+                    <p><strong>Duration:</strong> ${escapeHtml(String(c.duration_months || 'N/A'))} months</p>
+                    <p><strong>Monthly Rent:</strong> Rs ${Number(c.monthly_rent || 0).toLocaleString('en-IN')}</p>
+                    <p><strong>Security Deposit:</strong> Rs ${Number(c.security_deposit || 0).toLocaleString('en-IN')}</p>
+                    <p><strong>Address:</strong> ${escapeHtml(c.home_address || 'N/A')}</p>
+                    <p><strong>Signed At:</strong> ${escapeHtml(c.signed_at_display || 'N/A')}</p>
+                    <div style="margin-top:16px;">
+                        <strong>Signature:</strong>
+                        <div style="margin-top:8px; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#f9fafb;">
+                            ${c.signature_data ? `<img src="${c.signature_data}" alt="Signature" style="max-width:100%; max-height:220px; object-fit:contain; display:block; margin:auto;"/>` : '<div style="color:#6b7280;">No signature found.</div>'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Error viewing contract:', error);
+        alert('Error loading contract: ' + (error.message || 'Unknown error'));
+    }
+}
+
+async function loadAdminDocuments() {
+    const tbody = document.getElementById('documentsTableBodyAdmin');
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="8" style="text-align:center; color:var(--text-light); padding:2rem;">Loading documents...</td>
+        </tr>
+    `;
+
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/admin/documents', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        adminDocuments = data.documents || [];
+        renderDocumentsTable(adminDocuments);
+    } catch (error) {
+        console.error('Error loading admin documents:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; color:var(--danger-color); padding:2rem;">${escapeHtml(error.message || 'Failed to load documents')}</td>
+            </tr>
+        `;
+    }
+}
+
+function filterAdminDocuments() {
+    const q = (document.getElementById('documentsSearch')?.value || '').trim().toLowerCase();
+    if (!q) {
+        renderDocumentsTable(adminDocuments);
+        return;
+    }
+
+    const filtered = adminDocuments.filter(d => {
+        return String(d.student_name || '').toLowerCase().includes(q) ||
+            String(d.student_phone || '').toLowerCase().includes(q) ||
+            String(d.doc_name || '').toLowerCase().includes(q) ||
+            String(d.doc_type || '').toLowerCase().includes(q) ||
+            String(d.file_name || '').toLowerCase().includes(q);
+    });
+
+    renderDocumentsTable(filtered);
+}
+
+function renderDocumentsTable(documents) {
+    const tbody = document.getElementById('documentsTableBodyAdmin');
+    if (!tbody) return;
+
+    if (!documents || documents.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; color:var(--text-light); padding:2rem;">No documents found.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = documents.map(d => `
+        <tr>
+            <td>${escapeHtml(d.student_name || 'N/A')}</td>
+            <td>${escapeHtml(d.student_phone || 'N/A')}</td>
+            <td>${escapeHtml(d.doc_name || 'Untitled')}</td>
+            <td>${escapeHtml(d.doc_type || 'Other')}</td>
+            <td>${escapeHtml(d.file_name || 'N/A')}</td>
+            <td>${escapeHtml(d.uploaded_at_display || 'N/A')}</td>
+            <td>${escapeHtml(d.status || 'pending')}</td>
+            <td>
+                <button class="btn btn-small" onclick="viewAdminDocument(${Number(d.id)})">View</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function viewAdminDocument(docId) {
+    if (!docId) {
+        alert('Invalid document id.');
+        return;
+    }
+
+    try {
+        const response = await fetchWithTimeout(BACKEND_URL + '/admin/documents/' + docId + '/content', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('adminToken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.document || !data.document.doc_data) {
+            throw new Error(data.message || 'Unable to load document content.');
+        }
+
+        const win = window.open('', '_blank');
+        if (!win) {
+            alert('Popup blocked. Please allow popups to view documents.');
+            return;
+        }
+
+        win.document.write(`<iframe src="${data.document.doc_data}" style="border:0;width:100vw;height:100vh;"></iframe>`);
+    } catch (error) {
+        console.error('Error viewing document:', error);
+        alert('Error loading document: ' + (error.message || 'Unknown error'));
+    }
 }
   </script>
 </body>
